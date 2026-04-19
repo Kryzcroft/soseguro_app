@@ -89,10 +89,9 @@ export function PublicProfileView({ publicId }: PublicProfileViewProps) {
   >("idle");
 
   const [showChannels, setShowChannels] = useState(false);
-  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
   const [alertSent, setAlertSent] = useState(false);
-  const [alertResult, setAlertResult] = useState<string | null>(null);
   const [isPhotoBroken, setIsPhotoBroken] = useState(false);
+  const [expandedContacts, setExpandedContacts] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!publicId) return;
@@ -193,35 +192,11 @@ export function PublicProfileView({ publicId }: PublicProfileViewProps) {
       ? `https://maps.google.com/maps?q=${latitude},${longitude}&z=16&output=embed`
       : null;
 
-  const handleSendWhatsAppAlert = async () => {
-    if (!publicId || alertSent || isSendingWhatsApp) {
-      return;
-    }
-
-    setIsSendingWhatsApp(true);
-    setAlertResult(null);
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/public/alert/${publicId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ latitude, longitude }),
-      });
-
-      if (!response.ok) {
-        throw new Error("No fue posible enviar la alerta por WhatsApp.");
-      }
-
-      const data = (await response.json()) as { sentCount: number; channel: string };
-      setAlertSent(true);
-      setAlertResult(`Alerta enviada a ${data.sentCount} contacto(s) por ${data.channel}.`);
-    } catch (error) {
-      setAlertResult(error instanceof Error ? error.message : "Error inesperado");
-    } finally {
-      setIsSendingWhatsApp(false);
-    }
+  const toggleContactExpanded = (contactKey: string) => {
+    setExpandedContacts((prev) => ({
+      ...prev,
+      [contactKey]: !prev[contactKey],
+    }));
   };
 
   if (isLoading) {
@@ -397,19 +372,8 @@ export function PublicProfileView({ publicId }: PublicProfileViewProps) {
                   );
                 })}
               </div>
-
-              <button
-                type="button"
-                onClick={handleSendWhatsAppAlert}
-                disabled={isSendingWhatsApp || alertSent}
-                className="w-full rounded-[10px] bg-soseguro-emergency px-4 py-3 text-lg font-bold text-white disabled:opacity-50"
-              >
-                {isSendingWhatsApp ? "Enviando WhatsApp..." : "Enviar WhatsApp automatico"}
-              </button>
             </div>
           ) : null}
-
-          {alertResult ? <p className="mt-3 text-sm font-semibold">{alertResult}</p> : null}
         </section>
 
         <section className="overflow-hidden rounded-[18px] border border-soseguro-navy/10 bg-white shadow-[0_10px_30px_rgba(13,27,42,0.08)]">
@@ -417,15 +381,18 @@ export function PublicProfileView({ publicId }: PublicProfileViewProps) {
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-soseguro-navy/60">Respuesta rapida</p>
             <h2 className="mt-1 text-2xl font-extrabold text-soseguro-navy">Contactos de Emergencia</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-soseguro-navy/70">
-              Personas que deben recibir el aviso primero. Toca el Botón para realizar la llamada.
+              Personas que deben recibir el aviso primero. Toca la flecha para mostrar u ocultar cada contacto.
             </p>
           </div>
 
           <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2">
             {profile.emergencyContacts.map((contact) => {
+              const contactKey = `${contact.phone}-${contact.name}`;
+              const isExpanded = Boolean(expandedContacts[contactKey]);
+
               return (
                 <article
-                  key={`${contact.phone}-${contact.name}`}
+                  key={contactKey}
                   className="rounded-[16px] border border-soseguro-navy/10 bg-[#FBFDFF] p-4 transition-shadow hover:shadow-md"
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -433,26 +400,44 @@ export function PublicProfileView({ publicId }: PublicProfileViewProps) {
                       <p className="text-lg font-extrabold text-soseguro-navy">{contact.name}</p>
                       <p className="mt-1 text-sm font-medium text-soseguro-navy/65">{contact.relationship}</p>
                     </div>
-                    <span className="rounded-full bg-soseguro-navy/5 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-soseguro-navy/70">
-                      Emergencia
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-soseguro-navy/5 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-soseguro-navy/70">
+                        Emergencia
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => toggleContactExpanded(contactKey)}
+                        aria-expanded={isExpanded}
+                        aria-label={isExpanded ? `Ocultar ${contact.name}` : `Mostrar ${contact.name}`}
+                        className="rounded-full bg-soseguro-navy/5 p-2 text-soseguro-navy transition-colors hover:bg-soseguro-navy/10"
+                      >
+                        <ChevronDown
+                          size={18}
+                          className={`transition-transform duration-300 ${isExpanded ? "rotate-180" : "rotate-0"}`}
+                        />
+                      </button>
+                    </div>
                   </div>
 
-                  <a
-                    href={`tel:${contact.phone}`}
-                    className="mt-4 block rounded-[12px] bg-white px-4 py-3 text-center text-lg font-extrabold text-soseguro-navy ring-1 ring-soseguro-navy/10 transition-colors hover:bg-soseguro-light"
-                  >
-                    {contact.phone}
-                  </a>
+                  {isExpanded ? (
+                    <>
+                      <a
+                        href={`tel:${contact.phone}`}
+                        className="mt-4 block rounded-[12px] bg-white px-4 py-3 text-center text-lg font-extrabold text-soseguro-navy ring-1 ring-soseguro-navy/10 transition-colors hover:bg-soseguro-light"
+                      >
+                        {contact.phone}
+                      </a>
 
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <a
-                      href={`tel:${contact.phone}`}
-                      className="col-span-2 rounded-[12px] bg-soseguro-navy px-3 py-3 text-center text-sm font-bold text-white transition-colors hover:bg-[#123657]"
-                    >
-                      Llamar
-                    </a>
-                  </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <a
+                          href={`tel:${contact.phone}`}
+                          className="col-span-2 rounded-[12px] bg-soseguro-navy px-3 py-3 text-center text-sm font-bold text-white transition-colors hover:bg-[#123657]"
+                        >
+                          Llamar
+                        </a>
+                      </div>
+                    </>
+                  ) : null}
                 </article>
               );
             })}
