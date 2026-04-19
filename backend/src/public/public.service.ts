@@ -31,7 +31,7 @@ type PublicProfileResponse = {
 @Injectable()
 export class PublicService {
   private twilioClient: Twilio | null = null;
-  private readonly twilioFromPhone: string | null;
+  private readonly twilioFromWhatsApp: string | null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -39,9 +39,17 @@ export class PublicService {
   ) {
     const sid = this.configService.get<string>("TWILIO_SID");
     const token = this.configService.get<string>("TWILIO_AUTH_TOKEN");
-    this.twilioFromPhone = this.configService.get<string>("TWILIO_FROM_PHONE") ?? null;
+    const rawFrom =
+      this.configService.get<string>("TWILIO_WHATSAPP_FROM") ??
+      this.configService.get<string>("TWILIO_FROM_PHONE") ??
+      null;
+    this.twilioFromWhatsApp = rawFrom
+      ? rawFrom.startsWith("whatsapp:")
+        ? rawFrom
+        : `whatsapp:${rawFrom}`
+      : null;
 
-    if (sid && token && this.twilioFromPhone) {
+    if (sid && token && this.twilioFromWhatsApp) {
       this.twilioClient = new Twilio(sid, token);
     }
   }
@@ -147,14 +155,14 @@ export class PublicService {
 
     const phones = profile.emergencyContacts.map((c) => this.formatPublicPhone(c.countryCode, c.phoneNumber));
 
-    if (!this.twilioClient || !this.twilioFromPhone) {
+    if (!this.twilioClient || !this.twilioFromWhatsApp) {
       phones.forEach((phone) => {
-        console.log(`[DEV_SMS_MOCK] to=${phone} message=${message}`);
+        console.log(`[DEV_WHATSAPP_MOCK] to=whatsapp:${phone} message=${message}`);
       });
 
       return {
         sent: true,
-        channel: "mock",
+        channel: "mock_whatsapp",
         sentCount: phones.length,
       };
     }
@@ -162,8 +170,8 @@ export class PublicService {
     await Promise.all(
       phones.map((phone) =>
         this.twilioClient!.messages.create({
-          to: phone,
-          from: this.twilioFromPhone!,
+          to: `whatsapp:${phone}`,
+          from: this.twilioFromWhatsApp!,
           body: message,
         }),
       ),
@@ -171,7 +179,7 @@ export class PublicService {
 
     return {
       sent: true,
-      channel: "twilio_sms",
+      channel: "twilio_whatsapp",
       sentCount: phones.length,
     };
   }

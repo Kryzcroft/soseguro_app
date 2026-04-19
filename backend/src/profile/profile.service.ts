@@ -1,7 +1,10 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable, InternalServerErrorException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Prisma, MedicalProfile } from "@prisma/client";
 import { randomUUID } from "crypto";
+import { mkdir, writeFile } from "fs/promises";
+import { extname, join } from "path";
+import { createClient } from "@supabase/supabase-js";
 import { PrismaService } from "../prisma/prisma.service";
 import { UpsertProfileDto } from "./dto/upsert-profile.dto";
 
@@ -218,6 +221,15 @@ export class ProfileService {
     return { photoUrl };
   }
 
+  async saveProfilePhotoFile(userId: string, file: Express.Multer.File): Promise<{ photoUrl: string }> {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException("Archivo de imagen invalido.");
+    }
+
+    const photoUrl = await this.storeProfilePhoto(userId, file);
+    return this.saveProfilePhoto(userId, photoUrl);
+  }
+
   private generateSlug(firstName?: string, lastName?: string): string {
     const base = [firstName, lastName]
       .filter(Boolean)
@@ -235,5 +247,62 @@ export class ProfileService {
     const baseUrl =
       this.configService.get<string>("PUBLIC_PROFILE_BASE_URL") || "http://localhost:3000/p";
     return `${baseUrl.replace(/\/$/, "")}/${publicId}`;
+  }
+
+  private async storeProfilePhoto(userId: string, file: Express.Multer.File): Promise<string> {
+    const supabaseUrl = this.configService.get<string>("SUPABASE_URL")?.trim();
+    const supabaseServiceRoleKey = this.configService
+      .get<string>("SUPABASE_SERVICE_ROLE_KEY")
+      ?.trim();
+    const bucket = this.configService.get<string>("SUPABASE_STORAGE_BUCKET")?.trim() || "profile-photos";
+
+    if (supabaseUrl && supabaseServiceRoleKey) {
+      const extension = extname(file.originalname || "").toLowerCase() || this.extensionFromMime(file.mimetype);
+      const objectPath = `${userId}/${Date.now()}-${randomUUID()}${extension}`;
+
+      const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+
+      const { error } = await supabase.storage.from(bucket).upload(objectPath, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      });
+
+      if (error) {
+        throw new InternalServerErrorException(`No se pudo subir la imagen a storage: ${error.message}`);
+      }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from(bucket).getPublicUrl(objectPath);
+
+      if (!publicUrl) {
+        throw new InternalServerErrorException("No se pudo generar URL publica para la imagen.");
+      }
+
+      return publicUrl;
+    }
+
+    const destination = process.env.PROFILE_UPLOAD_DIR || "uploads/profile";
+    await mkdir(destination, { recursive: true });
+
+    const extension = extname(file.originalname || "").toLowerCase() || this.extensionFromMime(file.mimetype);
+    const filename = `${randomUUID()}${extension}`;
+    await writeFile(join(destination, filename), file.buffer);
+
+    const publicBaseUrl = this.configService.get<string>("PROFILE_UPLOAD_PUBLIC_BASE_URL") ?? "";
+    const normalizedBase = publicBaseUrl.replace(/\/$/, "");
+    return normalizedBase ? `${normalizedBase}/${filename}` : `/uploads/profile/${filename}`;
+  }
+
+  private extensionFromMime(mimeType: string): string {
+    if (mimeType === "image/png") {
+      return ".png";
+    }
+    if (mimeType === "image/webp") {
+      return ".webp";
+    }
+    return ".jpg";
   }
 }

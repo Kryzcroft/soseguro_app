@@ -10,12 +10,8 @@ import {
 } from "@nestjs/common";
 import { Type } from "class-transformer";
 import { IsBoolean } from "class-validator";
-import { ConfigService } from "@nestjs/config";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { diskStorage } from "multer";
-import { extname } from "path";
-import { randomUUID } from "crypto";
-import { mkdirSync } from "fs";
+import { memoryStorage } from "multer";
 import { CurrentUser, CurrentUserData } from "../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { PrivacyTermsGuard } from "../common/guards/privacy-terms.guard";
@@ -32,10 +28,7 @@ class VisibilityDto {
 @Controller("profile")
 @UseGuards(JwtAuthGuard)
 export class ProfileController {
-  constructor(
-    private readonly profileService: ProfileService,
-    private readonly configService: ConfigService,
-  ) {}
+  constructor(private readonly profileService: ProfileService) {}
 
   @Get("me")
   getMyProfile(@CurrentUser() user: CurrentUserData) {
@@ -63,17 +56,7 @@ export class ProfileController {
   @UseGuards(PrivacyTermsGuard)
   @UseInterceptors(
     FileInterceptor("file", {
-      storage: diskStorage({
-        destination: (_req, _file, cb) => {
-          const destination = process.env.PROFILE_UPLOAD_DIR || "uploads/profile";
-          mkdirSync(destination, { recursive: true });
-          cb(null, destination);
-        },
-        filename: (_req, file, cb) => {
-          const extension = extname(file.originalname).toLowerCase();
-          cb(null, `${randomUUID()}${extension}`);
-        },
-      }),
+      storage: memoryStorage(),
       fileFilter: (_req, file, cb) => {
         const allowed = ["image/jpeg", "image/png", "image/webp"];
         if (!allowed.includes(file.mimetype)) {
@@ -91,12 +74,6 @@ export class ProfileController {
     @CurrentUser() user: CurrentUserData,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    const publicBaseUrl = this.configService.get<string>("PROFILE_UPLOAD_PUBLIC_BASE_URL") ?? "";
-    const normalizedBase = publicBaseUrl.replace(/\/$/, "");
-    const photoUrl = normalizedBase
-      ? `${normalizedBase}/${file.filename}`
-      : `/uploads/profile/${file.filename}`;
-
-    return this.profileService.saveProfilePhoto(user.id, photoUrl);
+    return this.profileService.saveProfilePhotoFile(user.id, file);
   }
 }

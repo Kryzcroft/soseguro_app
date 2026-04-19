@@ -89,7 +89,7 @@ export function PublicProfileView({ publicId }: PublicProfileViewProps) {
   >("idle");
 
   const [showChannels, setShowChannels] = useState(false);
-  const [isSendingSms, setIsSendingSms] = useState(false);
+  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
   const [alertSent, setAlertSent] = useState(false);
   const [alertResult, setAlertResult] = useState<string | null>(null);
   const [isPhotoBroken, setIsPhotoBroken] = useState(false);
@@ -164,10 +164,14 @@ export function PublicProfileView({ publicId }: PublicProfileViewProps) {
   );
 
   const profilePhotoSrc = useMemo(() => {
-    const raw = profile?.photoUrl?.trim();
-    if (!raw) {
+    const rawPhotoUrl = profile?.photoUrl?.trim();
+    if (!rawPhotoUrl) {
       return PLACEHOLDER_PHOTO;
     }
+
+    // Backward compatibility for malformed values stored as
+    // PROFILE_UPLOAD_PUBLIC_BASE_URL=https://...
+    const raw = rawPhotoUrl.replace(/^PROFILE_UPLOAD_PUBLIC_BASE_URL=/i, "");
 
     if (/^https?:\/\//i.test(raw)) {
       return raw;
@@ -189,12 +193,12 @@ export function PublicProfileView({ publicId }: PublicProfileViewProps) {
       ? `https://maps.google.com/maps?q=${latitude},${longitude}&z=16&output=embed`
       : null;
 
-  const handleSendSmsAlert = async () => {
-    if (!publicId || alertSent || isSendingSms) {
+  const handleSendWhatsAppAlert = async () => {
+    if (!publicId || alertSent || isSendingWhatsApp) {
       return;
     }
 
-    setIsSendingSms(true);
+    setIsSendingWhatsApp(true);
     setAlertResult(null);
 
     try {
@@ -207,7 +211,7 @@ export function PublicProfileView({ publicId }: PublicProfileViewProps) {
       });
 
       if (!response.ok) {
-        throw new Error("No fue posible enviar la alerta por SMS.");
+        throw new Error("No fue posible enviar la alerta por WhatsApp.");
       }
 
       const data = (await response.json()) as { sentCount: number; channel: string };
@@ -216,7 +220,7 @@ export function PublicProfileView({ publicId }: PublicProfileViewProps) {
     } catch (error) {
       setAlertResult(error instanceof Error ? error.message : "Error inesperado");
     } finally {
-      setIsSendingSms(false);
+      setIsSendingWhatsApp(false);
     }
   };
 
@@ -396,11 +400,11 @@ export function PublicProfileView({ publicId }: PublicProfileViewProps) {
 
               <button
                 type="button"
-                onClick={handleSendSmsAlert}
-                disabled={isSendingSms || alertSent}
+                onClick={handleSendWhatsAppAlert}
+                disabled={isSendingWhatsApp || alertSent}
                 className="w-full rounded-[10px] bg-soseguro-emergency px-4 py-3 text-lg font-bold text-white disabled:opacity-50"
               >
-                {isSendingSms ? "Enviando SMS..." : "Enviar SMS automatico"}
+                {isSendingWhatsApp ? "Enviando WhatsApp..." : "Enviar WhatsApp automatico"}
               </button>
             </div>
           ) : null}
