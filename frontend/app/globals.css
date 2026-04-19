@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --so-bg: #F4F6F8;
+  --so-emergency: #E63946;
+  --so-navy: #0D1B2A;
+  --so-text: #0D1B2A;
+  --so-card: #FFFFFF;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--so-bg);
+  color: var(--so-text);
+}
+
+@layer components {
+  .so-card {
+    @apply rounded-xl bg-white shadow-sm;
+  }
+
+  .so-header {
+    @apply rounded-xl px-5 py-4 shadow-sm;
+    background: var(--so-navy);
+    color: #ffffff;
+  }
+
+  .so-emergency-btn {
+    @apply rounded-xl px-6 py-4 font-bold text-white transition-transform duration-150 active:scale-[0.98];
+    background: var(--so-emergency);
+  }
+}

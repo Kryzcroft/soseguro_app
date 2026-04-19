@@ -1,0 +1,133 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+}
+
+enum BloodType {
+    A_POSITIVE
+    A_NEGATIVE
+    B_POSITIVE
+    B_NEGATIVE
+    AB_POSITIVE
+    AB_NEGATIVE
+    O_POSITIVE
+    O_NEGATIVE
+
+    @@map("blood_type")
+}
+
+model User {
+    id                String             @id @default(uuid()) @map("id") @db.Uuid
+    email             String             @unique @map("email")
+    password          String             @map("password")
+    firstName         String?            @map("first_name")
+    lastName          String?            @map("last_name")
+    phoneNumber       String?            @map("phone_number")
+    isVerified        Boolean            @default(false) @map("is_verified")
+    privacyAccepted   Boolean            @default(false) @map("privacy_accepted")
+    termsAcceptedAt   DateTime?          @map("terms_accepted_at")
+    termsVersion      String?            @map("terms_version")
+    isPublic          Boolean            @default(true) @map("is_public")
+    createdAt         DateTime           @default(now()) @map("created_at")
+    medicalProfile    MedicalProfile?
+    activationCodes   ActivationCode[]
+    verificationCodes VerificationCode[]
+
+    @@map("users")
+}
+
+model ActivationCode {
+    id        String    @id @default(uuid()) @map("id") @db.Uuid
+    code      String    @unique @map("code") @db.Char(13)
+    codeHash  String?   @unique @map("code_hash")
+    isUsed    Boolean   @default(false) @map("is_used")
+    userId    String?   @map("user_id") @db.Uuid
+    user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+    createdAt DateTime  @default(now()) @map("created_at")
+    usedAt    DateTime? @map("used_at")
+
+    @@map("activation_codes")
+}
+
+model MedicalProfile {
+    id         String  @id @default(uuid()) @map("id") @db.Uuid
+    publicId   String  @unique @default(uuid()) @map("public_id") @db.Uuid
+    publicLink String? @map("public_link")
+    userId     String  @unique @map("user_id") @db.Uuid
+    user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+    slug       String  @unique @map("slug")
+    isPublic   Boolean @default(true) @map("is_public")
+    viewCount  Int     @default(0) @map("view_count")
+
+    firstName  String?   @map("first_name")
+    lastName   String?   @map("last_name")
+    birthDate  DateTime? @map("birth_date")
+    weightKg   Decimal?  @map("weight_kg") @db.Decimal(5, 2)
+    heightCm   Decimal?  @map("height_cm") @db.Decimal(5, 2)
+    address    String?   @map("address")
+    profession String?   @map("profession")
+    photoUrl   String?   @map("photo_url")
+
+    bloodType    BloodType? @map("blood_type")
+    allergies    String?    @map("allergies") @db.Text
+    isOrganDonor Boolean?   @map("is_organ_donor")
+
+    insuranceName   String? @map("insurance_name")
+    policyNumber    String? @map("policy_number")
+    chronicDiseases String? @map("chronic_diseases") @db.Text
+    medications     String? @map("medications") @db.Text
+    implants        String? @map("implants") @db.Text
+    medicalUnit     String? @map("medical_unit") @db.Text
+
+    emergencyContacts       EmergencyContact[]
+    createdAt               DateTime                 @default(now()) @map("created_at")
+    updatedAt               DateTime                 @updatedAt @map("updated_at")
+    publicProfileAccessLogs PublicProfileAccessLog[]
+
+    @@index([slug], map: "medical_profiles_slug_idx")
+    @@map("medical_profiles")
+}
+
+model EmergencyContact {
+    id               String         @id @default(uuid()) @map("id") @db.Uuid
+    medicalProfileId String         @map("medical_profile_id") @db.Uuid
+    medicalProfile   MedicalProfile @relation(fields: [medicalProfileId], references: [id], onDelete: Cascade)
+
+    name         String @map("name")
+    relationship String @map("relationship")
+    countryCode  String @map("country_code") @db.VarChar(5)
+    phoneNumber  String @map("phone_number") @db.VarChar(20)
+
+    createdAt DateTime @default(now()) @map("created_at")
+
+    @@index([medicalProfileId], map: "emergency_contacts_profile_id_idx")
+    @@map("emergency_contacts")
+}
+
+model VerificationCode {
+    id        String    @id @default(uuid()) @map("id") @db.Uuid
+    userId    String    @map("user_id") @db.Uuid
+    user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+    phone     String    @map("phone") @db.Text
+    code      String    @map("code") @db.Char(6)
+    expiresAt DateTime  @map("expires_at")
+    usedAt    DateTime? @map("used_at")
+    createdAt DateTime  @default(now()) @map("created_at")
+
+    @@index([userId, phone], map: "verification_codes_user_phone_idx")
+    @@index([userId, code], map: "verification_codes_user_code_idx")
+    @@map("verification_codes")
+}
+
+model PublicProfileAccessLog {
+    id               String         @id @default(uuid()) @map("id") @db.Uuid
+    medicalProfileId String         @map("medical_profile_id") @db.Uuid
+    medicalProfile   MedicalProfile @relation(fields: [medicalProfileId], references: [id], onDelete: Cascade)
+    accessedAt       DateTime       @default(now()) @map("accessed_at")
+
+    @@index([medicalProfileId], map: "public_profile_access_logs_profile_id_idx")
+    @@map("public_profile_access_logs")
+}

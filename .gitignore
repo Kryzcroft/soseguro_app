@@ -1,0 +1,35 @@
+# OS / Editor
+.DS_Store
+.vscode/
+
+# Node
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Env files
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# Build / cache
+backend/dist/
+frontend/.next/
+frontend/out/
+coverage/
+
+# Uploads and temp artifacts
+backend/uploads/
+*.tmp
+
+# Prisma local artifacts
+**/.prisma/

@@ -1,0 +1,18 @@
+{
+  "name": "SOSeguro",
+  "short_name": "SOSeguro",
+  "description": "Gestion de emergencia medica y QR de perfil",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F5F7FA",
+  "theme_color": "#0B1F33",
+  "icons": [
+    {
+      "src": "/sos-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
