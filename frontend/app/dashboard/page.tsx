@@ -128,9 +128,9 @@ export default function DashboardPage() {
   const hasAllergies = Boolean(medicalProfile?.allergies?.trim());
   const hasClinicalFlags = Boolean(
     hasAllergies ||
-      medicalProfile?.hasChronicDiseases ||
-      medicalProfile?.hasMedications ||
-      medicalProfile?.hasImplants,
+      medicalProfile?.chronicDiseases?.trim() ||
+      medicalProfile?.medications?.trim() ||
+      medicalProfile?.implants?.trim(),
   );
 
   const handleVisibilityToggle = async () => {
