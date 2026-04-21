@@ -18,6 +18,7 @@
     "prisma:seed": "npx tsx prisma/seed.ts",
     "test:e2e:code-first": "node -r ts-node/register scripts/e2e-code-first.ts",
     "generate:codes": "npx tsx scripts/generate-codes.ts",
+    "generate:label-batch": "npx tsx scripts/generate-label-batch.ts",
     "rehash:codes": "npx tsx scripts/rehash-activation-codes.ts"
   },
   "dependencies": {

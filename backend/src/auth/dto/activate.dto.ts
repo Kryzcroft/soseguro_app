@@ -1,4 +1,4 @@
-import { IsEmail, IsString, Length, MinLength, Matches } from "class-validator";
+import { IsEmail, IsString, MinLength, Matches } from "class-validator";
 
 export class ActivateDto {
   @IsEmail()
@@ -9,7 +9,6 @@ export class ActivateDto {
   password!: string;
 
   @IsString()
-  @Length(13, 13)
-  @Matches(/^SOS-[A-F0-9]{4}-[A-F0-9]{4}$/)
+  @Matches(/^(SOS-[A-F0-9]{4}-[A-F0-9]{4}|[A-F0-9]{8})$/)
   activationCode!: string;
 }

@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { ActivationCodeStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { Twilio } from "twilio";
 
@@ -27,6 +28,23 @@ type PublicProfileResponse = {
     phone: string;
   }>;
 };
+
+export type SmartAccessResolution =
+  | {
+      state: "INVALID";
+      message: string;
+    }
+  | {
+      state: "REGISTER";
+      activationCode: string;
+      redirectPath: string;
+    }
+  | {
+      state: "PUBLIC_PROFILE";
+      activationCode: string;
+      publicId: string;
+      redirectPath: string;
+    };
 
 @Injectable()
 export class PublicService {
@@ -117,6 +135,66 @@ export class PublicService {
         relationship: contact.relationship,
         phone: this.formatPublicPhone(contact.countryCode, contact.phoneNumber),
       })),
+    };
+  }
+
+  async resolveSmartAccess(rawCode: string): Promise<SmartAccessResolution> {
+    const activationCode = rawCode.trim().toUpperCase();
+    if (!activationCode) {
+      return {
+        state: "INVALID",
+        message: "Este codigo no es valido o no pertenece a nuestro sistema.",
+      };
+    }
+
+    const activation = await this.prisma.activationCode.findUnique({
+      where: { code: activationCode },
+      select: {
+        code: true,
+        status: true,
+        userId: true,
+        user: {
+          select: {
+            medicalProfile: {
+              select: {
+                publicId: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!activation || activation.status === ActivationCodeStatus.REVOKED) {
+      return {
+        state: "INVALID",
+        message: "Este codigo no es valido o no pertenece a nuestro sistema.",
+      };
+    }
+
+    const normalizedDbCode = activation.code.trim().toUpperCase();
+
+    if (!activation.userId || activation.status === ActivationCodeStatus.AVAILABLE) {
+      return {
+        state: "REGISTER",
+        activationCode: normalizedDbCode,
+        redirectPath: `/registro?code=${encodeURIComponent(normalizedDbCode)}`,
+      };
+    }
+
+    const publicId = activation.user?.medicalProfile?.publicId;
+    if (!publicId) {
+      return {
+        state: "INVALID",
+        message: "Este codigo no es valido o no pertenece a nuestro sistema.",
+      };
+    }
+
+    return {
+      state: "PUBLIC_PROFILE",
+      activationCode: normalizedDbCode,
+      publicId,
+      redirectPath: `/p/${publicId}`,
     };
   }
 

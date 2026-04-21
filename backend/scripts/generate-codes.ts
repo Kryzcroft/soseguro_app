@@ -1,12 +1,13 @@
 import "dotenv/config";
 import { createHash, randomBytes } from "crypto";
-import { PrismaClient } from "@prisma/client";
+import { ActivationCodeStatus, PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
 type GeneratedCode = {
   code: string;
   codeHash: string;
+  status: ActivationCodeStatus;
   isUsed: boolean;
   createdAt: Date;
 };
@@ -81,6 +82,7 @@ async function main() {
     const rows: GeneratedCode[] = Array.from(codes).map((code) => ({
       code,
       codeHash: buildCodeHash(code, pepper),
+      status: ActivationCodeStatus.AVAILABLE,
       isUsed: false,
       createdAt: new Date(),
     }));

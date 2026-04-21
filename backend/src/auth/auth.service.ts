@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
-import { User } from "@prisma/client";
+import { ActivationCodeStatus, User } from "@prisma/client";
 import * as argon2 from "argon2";
 import { randomUUID } from "crypto";
 import { PrismaService } from "../prisma/prisma.service";
@@ -86,20 +86,32 @@ export class AuthService {
       return { status: "NOT_FOUND" };
     }
 
-    const codeHash = buildActivationCodeHash(normalizedCode, this.activationCodePepper);
+    const candidates = this.buildActivationCodeCandidates(normalizedCode);
+    const hashes = candidates.map((candidate) =>
+      buildActivationCodeHash(candidate, this.activationCodePepper),
+    );
 
-    const activation = await this.prisma.activationCode.findFirst({
+    const activations = await this.prisma.activationCode.findMany({
       where: {
-        codeHash,
+        OR: [
+          { codeHash: { in: hashes } },
+          { code: { in: candidates } },
+        ],
       },
-      select: { isUsed: true },
+      select: { code: true, isUsed: true, status: true },
+      take: 5,
     });
+
+    const activation =
+      activations.find((row) => row.code.trim().toUpperCase() === normalizedCode) ||
+      activations[0];
 
     if (!activation) {
       return { status: "NOT_FOUND" };
     }
 
-    return { status: activation.isUsed ? "USED" : "FREE" };
+    const isFree = activation.status === ActivationCodeStatus.AVAILABLE && !activation.isUsed;
+    return { status: isFree ? "FREE" : "USED" };
   }
 
   async sendEmail(dto: SendEmailDto): Promise<{ sent: true; expiresInSeconds: number; skippedApproval?: boolean }> {
@@ -287,20 +299,37 @@ export class AuthService {
     rawActivationCode: string,
   ): Promise<Pick<User, "id" | "email" | "isVerified">> {
     const normalizedCode = normalizeActivationCode(rawActivationCode);
-    const codeHash = buildActivationCodeHash(normalizedCode, this.activationCodePepper);
+    const candidates = this.buildActivationCodeCandidates(normalizedCode);
+    const hashes = candidates.map((candidate) =>
+      buildActivationCodeHash(candidate, this.activationCodePepper),
+    );
 
     return this.prisma.$transaction(async (tx) => {
-      const activation = await tx.activationCode.findFirst({
+      const activations = await tx.activationCode.findMany({
         where: {
-          codeHash,
+          OR: [
+            { codeHash: { in: hashes } },
+            { code: { in: candidates } },
+          ],
         },
         select: {
           id: true,
+          code: true,
           isUsed: true,
+          status: true,
         },
+        take: 5,
       });
 
-      if (!activation || activation.isUsed) {
+      const activation =
+        activations.find((row) => row.code.trim().toUpperCase() === normalizedCode) ||
+        activations[0];
+
+      if (
+        !activation ||
+        activation.isUsed ||
+        activation.status !== ActivationCodeStatus.AVAILABLE
+      ) {
         throw new ForbiddenException("Código de activación inválido o ya utilizado");
       }
 
@@ -337,6 +366,8 @@ export class AuthService {
         },
         data: {
           isUsed: true,
+          status: ActivationCodeStatus.ACTIVE,
+          activatedAt: new Date(),
           usedAt: new Date(),
           userId: user.id,
         },
@@ -348,5 +379,16 @@ export class AuthService {
 
       return user;
     });
+  }
+
+  private buildActivationCodeCandidates(normalizedCode: string): string[] {
+    const upper = normalizedCode.trim().toUpperCase();
+    const candidates = [upper];
+
+    if (/^[A-F0-9]{8}$/.test(upper)) {
+      candidates.push(`SOS-${upper.slice(0, 4)}-${upper.slice(4)}`);
+    }
+
+    return candidates;
   }
 }

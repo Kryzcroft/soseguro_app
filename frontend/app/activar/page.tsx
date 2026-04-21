@@ -125,12 +125,16 @@ export default function ActivarPage() {
       return direct;
     }
 
+    if (/^[A-F0-9]{8}$/.test(direct)) {
+      return direct;
+    }
+
     const compact = direct.replace(/[^A-F0-9]/g, "");
     if (!/^[A-F0-9]{8}$/.test(compact)) {
       return null;
     }
 
-    return `SOS-${compact.slice(0, 4)}-${compact.slice(4)}`;
+    return compact;
   };
 
   const validateCodeWithBackend = async (normalizedCode: string): Promise<"FREE" | "USED" | "NOT_FOUND"> => {

@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { Prisma, MedicalProfile } from "@prisma/client";
+import { ActivationCodeStatus, Prisma, MedicalProfile } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
 import { extname, join } from "path";
@@ -22,6 +22,11 @@ type DashboardAccount = {
     termsVersion: string | null;
     isPublic: boolean;
   };
+  linkedActivationCode: {
+    code: string;
+    status: ActivationCodeStatus;
+    activatedAt: Date | null;
+  } | null;
   medicalProfile: DashboardMedicalProfile | null;
 };
 
@@ -43,6 +48,18 @@ export class ProfileService {
         termsAcceptedAt: true,
         termsVersion: true,
         isPublic: true,
+        activationCodes: {
+          where: {
+            status: ActivationCodeStatus.ACTIVE,
+          },
+          orderBy: [{ activatedAt: "desc" }, { createdAt: "desc" }],
+          take: 1,
+          select: {
+            code: true,
+            status: true,
+            activatedAt: true,
+          },
+        },
         medicalProfile: {
           include: {
             emergencyContacts: true,
@@ -68,11 +85,48 @@ export class ProfileService {
       });
     }
 
-    const { medicalProfile: _ignoredMedicalProfile, ...userData } = user;
+    const { medicalProfile: _ignoredMedicalProfile, activationCodes, ...userData } = user;
 
     return {
       user: userData,
+      linkedActivationCode: activationCodes[0]
+        ? {
+            code: activationCodes[0].code.trim().toUpperCase(),
+            status: activationCodes[0].status,
+            activatedAt: activationCodes[0].activatedAt,
+          }
+        : null,
       medicalProfile,
+    };
+  }
+
+  async unlinkActivationCode(userId: string, rawCode: string): Promise<{ unlinked: boolean; code: string }> {
+    const code = rawCode.trim().toUpperCase();
+    if (!code) {
+      throw new BadRequestException("El codigo es requerido para desvincular.");
+    }
+
+    const updated = await this.prisma.activationCode.updateMany({
+      where: {
+        code,
+        userId,
+      },
+      data: {
+        userId: null,
+        status: ActivationCodeStatus.AVAILABLE,
+        isUsed: false,
+        activatedAt: null,
+        usedAt: null,
+      },
+    });
+
+    if (updated.count < 1) {
+      throw new BadRequestException("No se encontro una etiqueta activa con ese codigo para tu cuenta.");
+    }
+
+    return {
+      unlinked: true,
+      code,
     };
   }
 

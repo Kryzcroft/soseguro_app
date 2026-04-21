@@ -16,6 +16,7 @@ import { CurrentUser, CurrentUserData } from "../common/decorators/current-user.
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { PrivacyTermsGuard } from "../common/guards/privacy-terms.guard";
 import { AcceptPrivacyDto } from "./dto/accept-privacy.dto";
+import { UnlinkActivationCodeDto } from "./dto/unlink-activation-code.dto";
 import { UpsertProfileDto } from "./dto/upsert-profile.dto";
 import { ProfileService } from "./profile.service";
 
@@ -50,6 +51,12 @@ export class ProfileController {
   @UseGuards(PrivacyTermsGuard)
   updateVisibility(@CurrentUser() user: CurrentUserData, @Body() body: VisibilityDto) {
     return this.profileService.updateVisibility(user.id, Boolean(body.isPublic));
+  }
+
+  @Post("unlink-label")
+  @UseGuards(PrivacyTermsGuard)
+  unlinkLabel(@CurrentUser() user: CurrentUserData, @Body() dto: UnlinkActivationCodeDto) {
+    return this.profileService.unlinkActivationCode(user.id, dto.code);
   }
 
   @Post("photo")

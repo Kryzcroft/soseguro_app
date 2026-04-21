@@ -13,6 +13,11 @@ export type DashboardAccount = {
     termsVersion: string | null;
     isPublic: boolean;
   };
+  linkedActivationCode: {
+    code: string;
+    status: "AVAILABLE" | "ACTIVE" | "REVOKED";
+    activatedAt: string | null;
+  } | null;
   medicalProfile: {
     id: string;
     userId: string;
@@ -58,6 +63,22 @@ export async function fetchDashboardProfile(): Promise<DashboardAccount | null> 
   }
 
   return response.json() as Promise<DashboardAccount>;
+}
+
+export async function unlinkActivationCode(code: string): Promise<{ unlinked: boolean; code: string }> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/profile/unlink-label`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ code }),
+  });
+
+  if (!response.ok) {
+    throw new Error("No se pudo desvincular la etiqueta");
+  }
+
+  return response.json() as Promise<{ unlinked: boolean; code: string }>;
 }
 
 export async function acceptPrivacyTerms(termsVersion: string): Promise<{ privacyAccepted: boolean; termsAcceptedAt: string | null; termsVersion: string | null }> {

@@ -74,3 +74,13 @@ export class AuthCheckCodeRateLimitGuard implements CanActivate {
     return true;
   }
 }
+
+@Injectable()
+export class SmartAccessRateLimitGuard implements CanActivate {
+  canActivate(context: ExecutionContext): boolean {
+    const request = context.switchToHttp().getRequest();
+    const ip = extractClientIp(request);
+    assertRateLimit(`smart-access:${ip}`);
+    return true;
+  }
+}

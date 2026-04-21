@@ -6,7 +6,12 @@ import { useRouter } from "next/navigation";
 import { DashboardSkeleton } from "../../components/dashboard/DashboardSkeleton";
 import { QRCard } from "../../components/dashboard/QRCard";
 import { PrivacyWall } from "../../components/legal/PrivacyWall";
-import { acceptPrivacyTerms, fetchDashboardProfile, updateProfileVisibility } from "../../lib/dashboard-api";
+import {
+  acceptPrivacyTerms,
+  fetchDashboardProfile,
+  unlinkActivationCode,
+  updateProfileVisibility,
+} from "../../lib/dashboard-api";
 import { getAuthToken } from "../../lib/auth-client";
 import { CURRENT_TERMS_VERSION } from "../../lib/legal";
 
@@ -45,6 +50,7 @@ export default function DashboardPage() {
   const [account, setAccount] = useState<Awaited<ReturnType<typeof fetchDashboardProfile>>>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false);
+  const [isUnlinkingLabel, setIsUnlinkingLabel] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -174,6 +180,40 @@ export default function DashboardPage() {
           : current,
       );
     } finally {
+    }
+  };
+
+  const handleUnlinkLabel = async () => {
+    const linkedCode = account?.linkedActivationCode?.code;
+    if (!linkedCode) {
+      setMessage("No tienes una etiqueta vinculada para desvincular.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `¿Desvincular la etiqueta ${linkedCode}? Quedará disponible para otra activación.`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setIsUnlinkingLabel(true);
+    setMessage(null);
+    try {
+      await unlinkActivationCode(linkedCode);
+      setAccount((current) =>
+        current
+          ? {
+              ...current,
+              linkedActivationCode: null,
+            }
+          : current,
+      );
+      setMessage("Etiqueta desvinculada correctamente. Ahora puedes activar una nueva etiqueta desde /a/:id.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo desvincular la etiqueta");
+    } finally {
+      setIsUnlinkingLabel(false);
     }
   };
 
@@ -319,6 +359,28 @@ export default function DashboardPage() {
               </button>
             </div>
             <p className="mt-3 text-xs text-slate-500">Este switch desactiva instantaneamente la visibilidad de tu perfil.</p>
+          </section>
+
+          <section className="rounded-[10px] border border-soseguro-navy/10 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold uppercase text-slate-500">Etiqueta vinculada</p>
+            {account.linkedActivationCode ? (
+              <>
+                <p className="mt-2 text-lg font-bold text-soseguro-navy">{account.linkedActivationCode.code}</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  Estado: {account.linkedActivationCode.status} · Activada: {account.linkedActivationCode.activatedAt ? new Date(account.linkedActivationCode.activatedAt).toLocaleString("es-MX") : "N/A"}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleUnlinkLabel}
+                  disabled={isUnlinkingLabel}
+                  className="mt-4 inline-flex w-full items-center justify-center rounded-md border border-soseguro-emergency px-3 py-2 text-sm font-semibold text-soseguro-emergency transition hover:bg-[#FFF1F3] disabled:opacity-50"
+                >
+                  {isUnlinkingLabel ? "Desvinculando..." : "Desvincular etiqueta"}
+                </button>
+              </>
+            ) : (
+              <p className="mt-2 text-sm text-slate-600">No hay etiqueta activa vinculada a tu cuenta.</p>
+            )}
           </section>
         </div>
 

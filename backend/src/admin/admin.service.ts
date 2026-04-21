@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { ActivationCodeStatus } from "@prisma/client";
 import { randomBytes } from "crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import {
@@ -94,6 +95,7 @@ export class AdminService {
             ? {
                 id: latestActivationCode.id,
                 code: latestActivationCode.code,
+                status: latestActivationCode.status,
                 isUsed: latestActivationCode.isUsed,
                 createdAt: latestActivationCode.createdAt,
                 usedAt: latestActivationCode.usedAt,
@@ -121,6 +123,7 @@ export class AdminService {
       activationCodes: activationCodes.map((code) => ({
         id: code.id,
         code: code.code,
+        status: code.status,
         isUsed: code.isUsed,
         createdAt: code.createdAt,
         usedAt: code.usedAt,
@@ -167,6 +170,8 @@ export class AdminService {
             code: normalizedCode,
             codeHash,
             userId: user.id,
+            status: ActivationCodeStatus.ACTIVE,
+            activatedAt: new Date(),
             isUsed: true,
             usedAt: new Date(),
           },
@@ -198,6 +203,8 @@ export class AdminService {
         data: {
           codeHash: existing.codeHash ?? codeHash,
           userId: user.id,
+          status: ActivationCodeStatus.ACTIVE,
+          activatedAt: existing.activatedAt ?? new Date(),
           isUsed: true,
           usedAt: existing.usedAt ?? new Date(),
         },
@@ -250,6 +257,7 @@ export class AdminService {
     const rows = Array.from(codes).map((code) => ({
       code,
       codeHash: buildActivationCodeHash(code, pepper),
+      status: ActivationCodeStatus.AVAILABLE,
       isUsed: false,
     }));
 
@@ -309,6 +317,8 @@ export class AdminService {
         where: { userId: user.id },
         data: {
           userId: null,
+          status: ActivationCodeStatus.AVAILABLE,
+          activatedAt: null,
           isUsed: false,
           usedAt: null,
         },
