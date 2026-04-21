@@ -17,18 +17,22 @@ export type AdminInventoryItem = {
   activationCode: {
     id: string;
     code: string;
+    status?: "AVAILABLE" | "ACTIVE" | "REVOKED";
     isUsed: boolean;
     createdAt: string;
     usedAt: string | null;
+    activatedAt?: string | null;
   } | null;
 };
 
 export type AdminActivationCodeRow = {
   id: string;
   code: string;
+  status?: "AVAILABLE" | "ACTIVE" | "REVOKED";
   isUsed: boolean;
   createdAt: string;
   usedAt: string | null;
+  activatedAt?: string | null;
   userId: string | null;
   userEmail: string | null;
 };

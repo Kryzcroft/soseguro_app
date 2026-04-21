@@ -5,14 +5,15 @@ import { QRCodeCanvas } from "qrcode.react";
 import { jsPDF } from "jspdf";
 
 type QRCardProps = {
-  profileUrl: string;
+  targetUrl: string;
   logoUrl: string;
   title: string;
 };
 
-export function QRCard({ profileUrl, logoUrl, title }: QRCardProps) {
+export function QRCard({ targetUrl, logoUrl, title }: QRCardProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [logoDataUrl, setLogoDataUrl] = useState<string>("");
+  const [copyMessage, setCopyMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -78,16 +79,22 @@ export function QRCard({ profileUrl, logoUrl, title }: QRCardProps) {
     pdf.text(title, 20, 24);
     pdf.addImage(canvas.toDataURL("image/png"), "PNG", 40, 50, 240, 240);
     pdf.setFontSize(10);
-    pdf.text(profileUrl, 20, 320, { maxWidth: 280 });
+    pdf.text(targetUrl, 20, 320, { maxWidth: 280 });
     pdf.save("sosguro-qr.pdf");
+  };
+
+  const copyUrl = async () => {
+    await navigator.clipboard.writeText(targetUrl);
+    setCopyMessage("URL copiada");
+    window.setTimeout(() => setCopyMessage(null), 1600);
   };
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-slate-900">Codigo QR</h3>
-          <p className="text-sm text-slate-500">Descarga tu QR presionando los botones PNG o PDF.</p>
+          <h3 className="text-lg font-semibold text-slate-900">Etiqueta QR y NFC</h3>
+          <p className="text-sm text-slate-500">Esta es la URL operativa que debe codificar tu QR/NFC.</p>
         </div>
         <div className="flex gap-2">
           <button onClick={downloadPng} className="rounded-md border px-3 py-2 text-sm font-medium text-slate-700">
@@ -96,15 +103,23 @@ export function QRCard({ profileUrl, logoUrl, title }: QRCardProps) {
           <button onClick={downloadPdf} className="rounded-md border px-3 py-2 text-sm font-medium text-slate-700">
             PDF
           </button>
+          <button onClick={copyUrl} className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white">
+            Copiar URL
+          </button>
         </div>
       </div>
+
+      <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 break-all">
+        {targetUrl}
+      </div>
+      {copyMessage ? <p className="mt-2 text-xs font-semibold text-emerald-700">{copyMessage}</p> : null}
 
       <div className="mt-4 flex justify-center rounded-xl bg-slate-50 p-4">
         <QRCodeCanvas
           ref={(node) => {
             canvasRef.current = node;
           }}
-          value={profileUrl}
+          value={targetUrl}
           size={220}
           level="H"
           includeMargin

@@ -12,14 +12,26 @@ type ActivationStatusFilter = "ALL" | "USED" | "AVAILABLE";
 type ActivationSortKey = "code" | "userEmail" | "isUsed" | "createdAt" | "usedAt";
 
 type QrToolsProps = {
-  publicLink: string | null;
+  targetUrl: string;
+  label: string;
 };
 
-function QrTools({ publicLink }: QrToolsProps) {
+const SITE_BASE_URL = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "";
+
+function buildLabelUrl(code?: string | null): string {
+  const normalizedCode = code?.trim().toUpperCase();
+  if (!normalizedCode || !SITE_BASE_URL) {
+    return "";
+  }
+
+  return `${SITE_BASE_URL}/a/${encodeURIComponent(normalizedCode)}`;
+}
+
+function QrTools({ targetUrl, label }: QrToolsProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
 
-  const finalUrl = useMemo(() => publicLink?.trim() || "", [publicLink]);
+  const finalUrl = useMemo(() => targetUrl?.trim() || "", [targetUrl]);
 
   const disabled = !finalUrl;
 
@@ -54,6 +66,7 @@ function QrTools({ publicLink }: QrToolsProps) {
 
   return (
     <div className="space-y-2">
+      <p className="break-all rounded-md bg-slate-50 px-2 py-1 text-[11px] font-mono text-slate-700">{label}</p>
       <div className="rounded-md border border-slate-200 bg-slate-50 p-2">
         <QRCodeCanvas
           ref={(node) => {
@@ -461,7 +474,10 @@ export default function AdminDashboardPage() {
                       </td>
                       <td className="px-3 py-3">
                         <QrTools
-                          publicLink={row.publicLink}
+                          targetUrl={buildLabelUrl(row.activationCode?.code) || row.publicLink || ""}
+                          label={
+                            buildLabelUrl(row.activationCode?.code) || row.publicLink || "Sin URL"
+                          }
                         />
                       </td>
                     </tr>

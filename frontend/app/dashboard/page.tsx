@@ -122,6 +122,20 @@ export default function DashboardPage() {
     return `${baseUrl}/p/${publicId}`;
   }, [account?.medicalProfile?.publicLink, account?.medicalProfile?.publicId, account?.medicalProfile?.slug]);
 
+  const labelAccessUrl = useMemo(() => {
+    const code = account?.linkedActivationCode?.code?.trim().toUpperCase();
+    if (!code) {
+      return "";
+    }
+
+    const baseUrl =
+      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
+      (typeof window !== "undefined" ? window.location.origin : "");
+    return `${baseUrl}/a/${encodeURIComponent(code)}`;
+  }, [account?.linkedActivationCode?.code]);
+
+  const qrTargetUrl = labelAccessUrl || profileUrl;
+
   const requiresPrivacyConsent = Boolean(
     account && (!account.user.privacyAccepted || account.user.termsVersion !== CURRENT_TERMS_VERSION),
   );
@@ -337,7 +351,15 @@ export default function DashboardPage() {
           </section>
 
           {account.medicalProfile ? (
-            <QRCard profileUrl={profileUrl} logoUrl={SOS_LOGO} title={`SOSeguro ${account.medicalProfile.slug}`} />
+            <QRCard
+              targetUrl={qrTargetUrl}
+              logoUrl={SOS_LOGO}
+              title={
+                account.linkedActivationCode?.code
+                  ? `Etiqueta SOSeguro ${account.linkedActivationCode.code}`
+                  : `SOSeguro ${account.medicalProfile.slug}`
+              }
+            />
           ) : (
             <section className="rounded-[10px] border border-soseguro-navy/10 bg-white p-5 shadow-sm">
               <h3 className="text-lg font-semibold text-slate-900">Codigo QR</h3>
