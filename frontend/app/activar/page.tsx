@@ -127,7 +127,15 @@ export default function ActivarPage() {
       return direct;
     }
 
+    if (/^[A-F0-9]{32}$/.test(direct)) {
+      return direct;
+    }
+
     const compact = direct.replace(/[^A-F0-9]/g, "");
+    if (/^[A-F0-9]{32}$/.test(compact)) {
+      return compact;
+    }
+
     if (!/^[A-F0-9]{8}$/.test(compact)) {
       return null;
     }
@@ -159,7 +167,7 @@ export default function ActivarPage() {
     const normalized = normalizeActivationCode(queryCode);
     if (!normalized) {
       setGateStatus("invalid");
-      setErrorMessage("Formato de codigo invalido. Usa SOS-XXXX-XXXX, 8 hex o 32 hex.");
+      setErrorMessage("Codigo invalido.");
       return;
     }
 
@@ -503,7 +511,6 @@ export default function ActivarPage() {
                   className="w-full rounded-2xl border border-slate-300 px-4 py-5 text-center font-mono text-base tracking-[0.12em] uppercase text-slate-900 outline-none ring-sky-400 transition focus:ring-4"
                 />
               </div>
-              <p className="mt-2 text-center text-xs text-slate-500">Formato aceptado: SOS-XXXX-XXXX, 8 hex o 32 hex.</p>
             </div>
 
             <button
