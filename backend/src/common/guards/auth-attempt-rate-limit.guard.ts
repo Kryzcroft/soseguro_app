@@ -11,8 +11,10 @@ type AttemptWindow = {
   resetAt: number;
 };
 
-const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
+const MAX_ATTEMPTS_ACTIVATE = 8;
+const MAX_ATTEMPTS_CHECK_CODE = 60;
+const MAX_ATTEMPTS_SMART_ACCESS = 30;
 const store = new Map<string, AttemptWindow>();
 
 function extractClientIp(request: {
@@ -32,7 +34,7 @@ function extractClientIp(request: {
   return request.ip || request.socket?.remoteAddress || "unknown";
 }
 
-function assertRateLimit(key: string): void {
+function assertRateLimit(key: string, maxAttempts: number): void {
   const now = Date.now();
   const current = store.get(key);
 
@@ -44,7 +46,7 @@ function assertRateLimit(key: string): void {
     return;
   }
 
-  if (current.count >= MAX_ATTEMPTS) {
+  if (current.count >= maxAttempts) {
     throw new HttpException(
       "Demasiados intentos. Intenta de nuevo en 15 minutos.",
       HttpStatus.TOO_MANY_REQUESTS,
@@ -60,7 +62,7 @@ export class AuthActivateRateLimitGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
     const ip = extractClientIp(request);
-    assertRateLimit(`activate:${ip}`);
+    assertRateLimit(`activate:${ip}`, MAX_ATTEMPTS_ACTIVATE);
     return true;
   }
 }
@@ -70,7 +72,7 @@ export class AuthCheckCodeRateLimitGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
     const ip = extractClientIp(request);
-    assertRateLimit(`check-code:${ip}`);
+    assertRateLimit(`check-code:${ip}`, MAX_ATTEMPTS_CHECK_CODE);
     return true;
   }
 }
@@ -80,7 +82,7 @@ export class SmartAccessRateLimitGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
     const ip = extractClientIp(request);
-    assertRateLimit(`smart-access:${ip}`);
+    assertRateLimit(`smart-access:${ip}`, MAX_ATTEMPTS_SMART_ACCESS);
     return true;
   }
 }
