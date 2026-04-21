@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { isAdminEmail } from "../../lib/admin-identity";
 import { getAuthEmailFromToken, getAuthToken, setAuthToken } from "../../lib/auth-client";
 import { loginAccount } from "../../lib/activation-api";
 import { fetchDashboardProfile } from "../../lib/dashboard-api";
@@ -19,12 +20,6 @@ function isProfileComplete(profile: Awaited<ReturnType<typeof fetchDashboardProf
       profile.address?.trim() &&
       profile.emergencyContacts.length > 0,
   );
-}
-
-const ADMIN_EMAIL = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "c.reyes@soseguro.com").trim().toLowerCase();
-
-function isAdminEmail(email?: string | null): boolean {
-  return (email || "").trim().toLowerCase() === ADMIN_EMAIL;
 }
 
 async function resolvePostLoginRoute(email?: string | null): Promise<"/admin/dashboard" | "/perfil-medico" | "/dashboard"> {

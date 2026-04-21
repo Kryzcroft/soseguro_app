@@ -6,13 +6,14 @@ import { useRouter } from "next/navigation";
 import { DashboardSkeleton } from "../../components/dashboard/DashboardSkeleton";
 import { QRCard } from "../../components/dashboard/QRCard";
 import { PrivacyWall } from "../../components/legal/PrivacyWall";
+import { isAdminEmail } from "../../lib/admin-identity";
 import {
   acceptPrivacyTerms,
   fetchDashboardProfile,
   unlinkActivationCode,
   updateProfileVisibility,
 } from "../../lib/dashboard-api";
-import { getAuthEmailFromToken, getAuthToken } from "../../lib/auth-client";
+import { clearAuthToken, getAuthEmailFromToken, getAuthToken } from "../../lib/auth-client";
 import { CURRENT_TERMS_VERSION } from "../../lib/legal";
 
 const SOS_LOGO = "/sos-logo-light.png";
@@ -61,8 +62,7 @@ export default function DashboardPage() {
     }
 
     const email = getAuthEmailFromToken(token);
-    const adminEmail = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "c.reyes@soseguro.com").trim().toLowerCase();
-    if ((email || "").trim().toLowerCase() === adminEmail) {
+    if (isAdminEmail(email)) {
       router.replace("/admin/dashboard");
       return;
     }
@@ -238,6 +238,11 @@ export default function DashboardPage() {
     }
   };
 
+  const handleLogout = () => {
+    clearAuthToken();
+    router.replace("/login");
+  };
+
   if (!isReady || isLoading) {
     return <DashboardSkeleton />;
   }
@@ -262,7 +267,16 @@ export default function DashboardPage() {
         <header className="rounded-[10px] bg-soseguro-navy px-6 py-5 text-white shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/80">Kryzcroft Defender</p>
-            <img src={SOS_LOGO} alt="Logo SOSeguro" className="h-11 w-auto rounded-md bg-white p-1" />
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white transition hover:bg-white/20"
+              >
+                Cerrar sesion
+              </button>
+              <img src={SOS_LOGO} alt="Logo SOSeguro" className="h-11 w-auto rounded-md bg-white p-1" />
+            </div>
           </div>
           <div className="mt-2 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>

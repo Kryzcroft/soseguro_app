@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { MedicalProfileForm } from "../../components/medical-profile/MedicalProfileForm";
 import { PrivacyWall } from "../../components/legal/PrivacyWall";
 import { acceptPrivacyTerms, fetchDashboardProfile } from "../../lib/dashboard-api";
+import { isAdminEmail } from "../../lib/admin-identity";
 import { getAuthEmailFromToken, getAuthToken, UnauthorizedError } from "../../lib/auth-client";
 import { CURRENT_TERMS_VERSION } from "../../lib/legal";
 import { MedicalProfileFormValues } from "../../lib/medical-profile-schema";
@@ -119,8 +120,7 @@ export default function PerfilMedicoPage() {
     }
 
     const email = getAuthEmailFromToken(saved);
-    const adminEmail = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "c.reyes@soseguro.com").trim().toLowerCase();
-    if ((email || "").trim().toLowerCase() === adminEmail) {
+    if (isAdminEmail(email)) {
       router.replace("/admin/dashboard");
       return;
     }

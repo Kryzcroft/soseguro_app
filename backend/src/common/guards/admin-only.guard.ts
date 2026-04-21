@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../../prisma/prisma.service";
+import { buildAdminEmailSet } from "../admin-identity";
 
 type RequestUser = {
   id: string;
@@ -27,12 +28,7 @@ export class AdminOnlyGuard implements CanActivate {
       throw new ForbiddenException("Acceso restringido a administradores.");
     }
 
-    const adminEmail = (this.configService.get<string>("ADMIN_EMAIL") || "admin@soseguro.app")
-      .trim()
-      .toLowerCase();
-
-    const fallbackCristianEmail = "cristian@soseguro.app";
-    const allowedEmails = new Set([adminEmail, fallbackCristianEmail]);
+    const allowedEmails = buildAdminEmailSet(this.configService.get<string>("ADMIN_EMAIL"));
 
     const dbUser = await this.prisma.user.findUnique({
       where: { id: user.id },

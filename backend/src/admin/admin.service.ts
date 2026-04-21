@@ -12,6 +12,7 @@ import {
   buildActivationCodeHash,
   normalizeActivationCode,
 } from "../auth/activation-code-security";
+import { buildAdminEmailSet } from "../common/admin-identity";
 
 export type ProfileStatusFilter = "INCOMPLETO" | "COMPLETO";
 
@@ -297,7 +298,7 @@ export class AdminService {
   }
 
   async deleteUserWithRelatedData(userId: string) {
-    const adminEmail = this.configService.get<string>("ADMIN_EMAIL")?.trim().toLowerCase();
+    const allowedAdminEmails = buildAdminEmailSet(this.configService.get<string>("ADMIN_EMAIL"));
 
     return this.prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({
@@ -309,7 +310,7 @@ export class AdminService {
         throw new NotFoundException("Usuario no encontrado.");
       }
 
-      if (adminEmail && user.email.toLowerCase() === adminEmail) {
+      if (allowedAdminEmails.has(user.email.toLowerCase())) {
         throw new BadRequestException("No se puede eliminar la cuenta administradora principal.");
       }
 
