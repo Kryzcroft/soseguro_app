@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { QRCodeCanvas } from "qrcode.react";
 import { approveUser, assignActivationCode, deleteUserWithRelatedData, fetchAdminDashboard, generateActivationCodes, ProfileStatus } from "../../../lib/admin-api";
-import { getAuthToken, UnauthorizedError } from "../../../lib/auth-client";
+import { clearAuthToken, getAuthToken, UnauthorizedError } from "../../../lib/auth-client";
 
 type FilterOption = "ALL" | ProfileStatus;
 type AccountStatusFilter = "ALL" | "PENDING" | "APPROVED";
@@ -14,6 +14,7 @@ type ActivationSortKey = "code" | "userEmail" | "isUsed" | "createdAt" | "usedAt
 type QrToolsProps = {
   targetUrl: string;
   label: string;
+  fileLabel?: string;
 };
 
 const SITE_BASE_URL = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "";
@@ -27,7 +28,7 @@ function buildLabelUrl(code?: string | null): string {
   return `${SITE_BASE_URL}/a/${encodeURIComponent(normalizedCode)}`;
 }
 
-function QrTools({ targetUrl, label }: QrToolsProps) {
+function QrTools({ targetUrl, label, fileLabel }: QrToolsProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
 
@@ -46,7 +47,8 @@ function QrTools({ targetUrl, label }: QrToolsProps) {
       }
 
       const link = document.createElement("a");
-      link.download = "perfil-publico-qr.png";
+      const normalizedFileLabel = (fileLabel || "etiqueta").replace(/[^A-Z0-9_-]/gi, "");
+      link.download = `qr-${normalizedFileLabel || "etiqueta"}.png`;
       const objectUrl = URL.createObjectURL(blob);
       link.href = objectUrl;
       link.click();
@@ -66,6 +68,7 @@ function QrTools({ targetUrl, label }: QrToolsProps) {
 
   return (
     <div className="space-y-2">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">URL completa QR/NFC</p>
       <p className="break-all rounded-md bg-slate-50 px-2 py-1 text-[11px] font-mono text-slate-700">{label}</p>
       <div className="rounded-md border border-slate-200 bg-slate-50 p-2">
         <QRCodeCanvas
@@ -322,15 +325,34 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleLogout = () => {
+    clearAuthToken();
+    router.replace("/login");
+  };
+
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-8 md:px-8">
       <section className="mx-auto max-w-7xl space-y-6">
         <header className="rounded-2xl bg-[#10243A] px-6 py-5 text-white shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C7D8E8]">Panel protegido</p>
-          <h1 className="mt-2 text-2xl font-bold">Admin Dashboard: Logistica de Dispositivos</h1>
-          <p className="mt-1 text-sm text-[#D8E6F1]">
-            Gestion de inventario, codigos de activacion y activos QR/NFC.
-          </p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C7D8E8]">Panel protegido</p>
+              <h1 className="mt-2 text-2xl font-bold">Admin Dashboard: Logistica de Dispositivos</h1>
+              <p className="mt-1 text-sm text-[#D8E6F1]">
+                Gestion de inventario, codigos de activacion y activos QR/NFC.
+              </p>
+              <p className="mt-2 text-xs text-[#C7D8E8]">
+                Cada fila muestra la URL final que debes grabar en QR y NFC, con opcion de copiar y descargar QR.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white transition hover:bg-white/20"
+            >
+              Cerrar sesion
+            </button>
+          </div>
         </header>
 
         <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -383,10 +405,10 @@ export default function AdminDashboardPage() {
                     <th className="px-3 py-2">Estatus perfil</th>
                     <th className="px-3 py-2">Estatus cuenta</th>
                     <th className="px-3 py-2">Codigo</th>
-                    <th className="px-3 py-2">Public Link</th>
+                    <th className="px-3 py-2">URL completa QR/NFC</th>
                     <th className="px-3 py-2">Asignacion manual</th>
                     <th className="px-3 py-2">Eliminar</th>
-                    <th className="px-3 py-2">Activos</th>
+                    <th className="px-3 py-2">QR y NFC</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -434,10 +456,28 @@ export default function AdminDashboardPage() {
                         {row.activationCode?.code || "Sin codigo"}
                       </td>
                       <td className="px-3 py-3 text-xs text-slate-600">
-                        {row.publicLink ? (
-                          <a href={row.publicLink} target="_blank" rel="noreferrer" className="text-blue-700 underline">
-                            {row.publicLink}
-                          </a>
+                        {buildLabelUrl(row.activationCode?.code) ? (
+                          <div className="space-y-2">
+                            <a
+                              href={buildLabelUrl(row.activationCode?.code)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="break-all font-mono text-blue-700 underline"
+                            >
+                              {buildLabelUrl(row.activationCode?.code)}
+                            </a>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await navigator.clipboard.writeText(buildLabelUrl(row.activationCode?.code));
+                                setSuccessMessage("URL de etiqueta copiada.");
+                                window.setTimeout(() => setSuccessMessage(null), 1500);
+                              }}
+                              className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700"
+                            >
+                              Copiar URL
+                            </button>
+                          </div>
                         ) : (
                           "No disponible"
                         )}
@@ -473,12 +513,21 @@ export default function AdminDashboardPage() {
                         </button>
                       </td>
                       <td className="px-3 py-3">
+                        {(() => {
+                          const labelUrl = buildLabelUrl(row.activationCode?.code);
+                          const fallbackUrl = row.publicLink || "";
+                          const finalUrl = labelUrl || fallbackUrl;
+                          const label = finalUrl || "Sin URL";
+                          const fileLabel = row.activationCode?.code || row.userId;
+
+                          return (
                         <QrTools
-                          targetUrl={buildLabelUrl(row.activationCode?.code) || row.publicLink || ""}
-                          label={
-                            buildLabelUrl(row.activationCode?.code) || row.publicLink || "Sin URL"
-                          }
+                          targetUrl={finalUrl}
+                          label={label}
+                          fileLabel={fileLabel}
                         />
+                          );
+                        })()}
                       </td>
                     </tr>
                   ))}
