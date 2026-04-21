@@ -46,6 +46,39 @@ export function clearAuthToken(): void {
   localStorage.removeItem(LEGACY_TOKEN_KEY);
 }
 
+function decodeBase64Url(input: string): string {
+  const normalized = input.replace(/-/g, "+").replace(/_/g, "/");
+  const padding = normalized.length % 4;
+  const padded = padding === 0 ? normalized : normalized + "=".repeat(4 - padding);
+
+  if (typeof window !== "undefined" && typeof window.atob === "function") {
+    const binary = window.atob(padded);
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  }
+
+  return "";
+}
+
+export function getAuthEmailFromToken(token?: string | null): string | null {
+  const rawToken = token ?? getAuthToken();
+  if (!rawToken) {
+    return null;
+  }
+
+  const parts = rawToken.split(".");
+  if (parts.length < 2) {
+    return null;
+  }
+
+  try {
+    const payload = JSON.parse(decodeBase64Url(parts[1])) as { email?: string };
+    return typeof payload.email === "string" ? payload.email : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchWithAuth(input: string, init: RequestInit = {}): Promise<Response> {
   const token = getAuthToken();
 

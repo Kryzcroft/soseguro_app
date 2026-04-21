@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { MedicalProfileForm } from "../../components/medical-profile/MedicalProfileForm";
 import { PrivacyWall } from "../../components/legal/PrivacyWall";
 import { acceptPrivacyTerms, fetchDashboardProfile } from "../../lib/dashboard-api";
-import { getAuthToken, UnauthorizedError } from "../../lib/auth-client";
+import { getAuthEmailFromToken, getAuthToken, UnauthorizedError } from "../../lib/auth-client";
 import { CURRENT_TERMS_VERSION } from "../../lib/legal";
 import { MedicalProfileFormValues } from "../../lib/medical-profile-schema";
 import { MX_COUNTRY_CODE, toMxE164FromBackend } from "../../lib/mx-phone";
@@ -115,6 +115,13 @@ export default function PerfilMedicoPage() {
     const saved = getAuthToken();
     if (!saved) {
       router.replace("/login");
+      return;
+    }
+
+    const email = getAuthEmailFromToken(saved);
+    const adminEmail = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "c.reyes@soseguro.com").trim().toLowerCase();
+    if ((email || "").trim().toLowerCase() === adminEmail) {
+      router.replace("/admin/dashboard");
       return;
     }
 

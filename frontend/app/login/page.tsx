@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getAuthToken, setAuthToken } from "../../lib/auth-client";
+import { getAuthEmailFromToken, getAuthToken, setAuthToken } from "../../lib/auth-client";
 import { loginAccount } from "../../lib/activation-api";
 import { fetchDashboardProfile } from "../../lib/dashboard-api";
 
@@ -21,7 +21,22 @@ function isProfileComplete(profile: Awaited<ReturnType<typeof fetchDashboardProf
   );
 }
 
-async function resolvePostLoginRoute(): Promise<"/perfil-medico" | "/dashboard"> {
+const ADMIN_EMAIL = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "c.reyes@soseguro.com").trim().toLowerCase();
+
+function isAdminEmail(email?: string | null): boolean {
+  return (email || "").trim().toLowerCase() === ADMIN_EMAIL;
+}
+
+async function resolvePostLoginRoute(email?: string | null): Promise<"/admin/dashboard" | "/perfil-medico" | "/dashboard"> {
+  if (isAdminEmail(email)) {
+    return "/admin/dashboard";
+  }
+
+  const tokenEmail = getAuthEmailFromToken();
+  if (isAdminEmail(tokenEmail)) {
+    return "/admin/dashboard";
+  }
+
   try {
     const account = await fetchDashboardProfile();
     return isProfileComplete(account?.medicalProfile ?? null) ? "/dashboard" : "/perfil-medico";
@@ -66,7 +81,7 @@ export default function LoginPage() {
     try {
       const result = await loginAccount(email, password);
       setAuthToken(result.token);
-      const route = await resolvePostLoginRoute();
+      const route = await resolvePostLoginRoute(email);
       router.push(route);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "No se pudo iniciar sesion");

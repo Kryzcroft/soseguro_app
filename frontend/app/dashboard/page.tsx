@@ -12,7 +12,7 @@ import {
   unlinkActivationCode,
   updateProfileVisibility,
 } from "../../lib/dashboard-api";
-import { getAuthToken } from "../../lib/auth-client";
+import { getAuthEmailFromToken, getAuthToken } from "../../lib/auth-client";
 import { CURRENT_TERMS_VERSION } from "../../lib/legal";
 
 const SOS_LOGO = "/sos-logo-light.png";
@@ -57,6 +57,13 @@ export default function DashboardPage() {
     const token = getAuthToken();
     if (!token) {
       router.replace("/login");
+      return;
+    }
+
+    const email = getAuthEmailFromToken(token);
+    const adminEmail = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "c.reyes@soseguro.com").trim().toLowerCase();
+    if ((email || "").trim().toLowerCase() === adminEmail) {
+      router.replace("/admin/dashboard");
       return;
     }
 
