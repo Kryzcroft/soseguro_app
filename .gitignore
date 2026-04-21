@@ -33,3 +33,6 @@ backend/uploads/
 
 # Prisma local artifacts
 **/.prisma/
+
+# Generated label batches
+backend/outputs/
