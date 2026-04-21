@@ -449,7 +449,7 @@ export default function AdminDashboardPage() {
                             onChange={(event) =>
                               setCodeDrafts((current) => ({ ...current, [row.userId]: event.target.value }))
                             }
-                            placeholder="SOS-AB12-CD34"
+                            placeholder="A1B2C3D4E5F60718293A4B5C6D7E8F90"
                             className="w-36 rounded-md border border-slate-300 px-2 py-1 text-xs uppercase"
                           />
                           <button

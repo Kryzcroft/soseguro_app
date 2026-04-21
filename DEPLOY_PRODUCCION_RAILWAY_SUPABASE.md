@@ -15,6 +15,7 @@
 Usa los valores de `backend/.env.example` y define al menos:
 
 - `DATABASE_URL` (Supabase connection string)
+- `DIRECT_DATABASE_URL` (Supabase direct connection for Prisma migrations)
 - `JWT_SECRET`
 - `ACTIVATION_CODE_PEPPER`
 - `PUBLIC_PROFILE_BASE_URL` (URL del frontend en Railway)
@@ -34,8 +35,9 @@ Usa los valores de `frontend/.env.example`:
 ## Paso 2. Crear base en Supabase
 
 1. Crear proyecto Supabase.
-2. Copiar cadena de conexion Postgres (transaction pooler o direct connection).
-3. Colocar `DATABASE_URL` en Railway backend.
+2. Copiar cadena de conexion Postgres directa y, si quieres, la del pooler.
+3. Colocar `DATABASE_URL` en Railway backend con la cadena que usara la app.
+4. Colocar `DIRECT_DATABASE_URL` con la conexion directa para `prisma migrate deploy`.
 
 ## Paso 3. Deploy Backend en Railway
 

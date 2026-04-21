@@ -356,8 +356,6 @@ export class AdminService {
   }
 
   private generateActivationCode(): string {
-    const blockA = randomBytes(2).toString("hex").toUpperCase();
-    const blockB = randomBytes(2).toString("hex").toUpperCase();
-    return `SOS-${blockA}-${blockB}`;
+    return randomBytes(16).toString("hex").toUpperCase();
   }
 }

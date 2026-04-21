@@ -81,8 +81,8 @@ export function StepCredentialsForm(props: StepCredentialsFormProps) {
         <label className="mb-1 block text-sm font-medium">Codigo de activacion</label>
         <input
           type="text"
-          maxLength={13}
-          placeholder="SOS-1A2B-3C4D"
+          maxLength={32}
+          placeholder="A1B2C3D4E5F60718293A4B5C6D7E8F90"
           className="w-full rounded-md border border-slate-300 px-3 py-2 uppercase"
           {...register("activationCode")}
         />

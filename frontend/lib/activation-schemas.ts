@@ -11,8 +11,8 @@ export const activateSchema = z.object({
     .trim()
     .min(1, "El codigo de activacion es obligatorio")
     .refine(
-      (value) => /^SOS-[A-F0-9]{4}-[A-F0-9]{4}$/.test(value.toUpperCase()),
-      "Formato SOS-XXXX-XXXX",
+      (value) => /^(SOS-[A-F0-9]{4}-[A-F0-9]{4}|[A-F0-9]{8}|[A-F0-9]{32})$/.test(value.toUpperCase()),
+      "Formato SOS-XXXX-XXXX, 8 hex o 32 hex",
     ),
   email: z.string().email("Ingresa un email valido"),
   password: z

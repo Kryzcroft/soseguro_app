@@ -29,12 +29,8 @@ function parseBatchSize(): number {
   return parsed;
 }
 
-function generateBlock(): string {
-  return randomBytes(2).toString("hex").toUpperCase();
-}
-
 function generateActivationCode(): string {
-  return `SOS-${generateBlock()}-${generateBlock()}`;
+  return randomBytes(16).toString("hex").toUpperCase();
 }
 
 function buildCodeHash(code: string, pepper: string): string {

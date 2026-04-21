@@ -1,20 +1,12 @@
 import "dotenv/config";
 import { createHash } from "crypto";
+import { randomBytes } from "crypto";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
-function randomHexGroup(length: number): string {
-  const alphabet = "0123456789ABCDEF";
-  let value = "";
-  for (let index = 0; index < length; index += 1) {
-    value += alphabet[Math.floor(Math.random() * alphabet.length)];
-  }
-  return value;
-}
-
 function generateActivationCode(): string {
-  return `SOS-${randomHexGroup(4)}-${randomHexGroup(4)}`;
+  return randomBytes(16).toString("hex").toUpperCase();
 }
 
 async function main() {

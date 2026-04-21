@@ -37,8 +37,8 @@ function normalizeBaseUrl(rawBaseUrl: string): string {
   return trimmed;
 }
 
-function generateHexCode8(): string {
-  return randomBytes(4).toString("hex").toUpperCase();
+function generateHexCode32(): string {
+  return randomBytes(16).toString("hex").toUpperCase();
 }
 
 function toCsv(rows: BatchRow[]): string {
@@ -73,7 +73,7 @@ async function main() {
       }
 
       const pending = quantity - generatedCodes.size;
-      const candidates = Array.from({ length: pending }, () => generateHexCode8());
+      const candidates = Array.from({ length: pending }, () => generateHexCode32());
       const existing = await prisma.activationCode.findMany({
         where: {
           code: { in: candidates },

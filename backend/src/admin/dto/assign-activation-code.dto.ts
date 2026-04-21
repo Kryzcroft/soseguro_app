@@ -5,6 +5,6 @@ export class AssignActivationCodeDto {
   userId!: string;
 
   @IsString()
-  @Matches(/^[A-Z0-9]{3}-[A-Z0-9]{4}-[A-Z0-9]{4}$/)
+  @Matches(/^(SOS-[A-Z0-9]{4}-[A-Z0-9]{4}|[A-Z0-9]{8}|[A-Z0-9]{32})$/)
   code!: string;
 }

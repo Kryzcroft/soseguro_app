@@ -273,7 +273,7 @@ export default function ActivarPage() {
     const normalized = normalizeActivationCode(gateCodeInput);
     if (!normalized) {
       setGateStatus("invalid");
-      setErrorMessage("Ingresa un codigo valido de 8 caracteres (ej: AB12CD34).");
+      setErrorMessage("Ingresa un codigo valido de 32 caracteres (ej: A1B2C3D4E5F60718293A4B5C6D7E8F90).");
       return;
     }
 

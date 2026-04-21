@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import { config as loadEnv } from "dotenv";
 import { join } from "path";
+import { randomBytes } from "crypto";
 import { NestFactory } from "@nestjs/core";
 import type { INestApplication } from "@nestjs/common";
 import { AppModule } from "../src/app.module";
@@ -10,17 +11,8 @@ import { PrismaService } from "../src/prisma/prisma.service";
 loadEnv({ path: join(process.cwd(), "../.env") });
 loadEnv({ path: join(process.cwd(), ".env") });
 
-function randomHex(len: number): string {
-  const chars = "ABCDEF0123456789";
-  let out = "";
-  for (let i = 0; i < len; i += 1) {
-    out += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return out;
-}
-
 function makeCode(): string {
-  return `SOS-${randomHex(4)}-${randomHex(4)}`;
+  return randomBytes(16).toString("hex").toUpperCase();
 }
 
 function assertCondition(condition: unknown, message: string): void {
