@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   getActivationCodeStatus,
@@ -51,8 +51,6 @@ const initialState: ActivationState = {
 
 export default function ActivarPage() {
   const router = useRouter();
-  const firstCodeInputRef = useRef<HTMLInputElement | null>(null);
-  const secondCodeInputRef = useRef<HTMLInputElement | null>(null);
   const [state, setState] = useState<ActivationState>(initialState);
   const [isBootstrapped, setIsBootstrapped] = useState(false);
   const [isHydratingState, setIsHydratingState] = useState(true);
@@ -161,11 +159,11 @@ export default function ActivarPage() {
     const normalized = normalizeActivationCode(queryCode);
     if (!normalized) {
       setGateStatus("invalid");
-      setErrorMessage("Formato de codigo invalido. Usa 8 caracteres hexadecimales.");
+      setErrorMessage("Formato de codigo invalido. Usa SOS-XXXX-XXXX, 8 hex o 32 hex.");
       return;
     }
 
-    setGateCodeInput(normalized.replace(/^SOS-/, "").replace(/-/g, ""));
+    setGateCodeInput(normalized);
     setState((prev) => ({
       ...prev,
       step: 1,
@@ -456,39 +454,7 @@ export default function ActivarPage() {
   }
 
   const canRenderProtectedStep = gateStatus === "validated";
-  const gateCodeCompact = gateCodeInput.toUpperCase().replace(/[^A-F0-9]/g, "").slice(0, 8);
-  const gateCodeFirstBlock = gateCodeCompact.slice(0, 4);
-  const gateCodeSecondBlock = gateCodeCompact.slice(4, 8);
-
-  const sanitizeCode = (value: string) => value.toUpperCase().replace(/[^A-F0-9]/g, "");
-
-  const updateFirstBlock = (value: string) => {
-    const first = sanitizeCode(value).slice(0, 4);
-    const merged = `${first}${gateCodeSecondBlock}`.slice(0, 8);
-    setGateCodeInput(merged);
-
-    if (first.length === 4) {
-      secondCodeInputRef.current?.focus();
-    }
-  };
-
-  const updateSecondBlock = (value: string) => {
-    const second = sanitizeCode(value).slice(0, 4);
-    const merged = `${gateCodeFirstBlock}${second}`.slice(0, 8);
-    setGateCodeInput(merged);
-  };
-
-  const handleCodePaste = (value: string) => {
-    const compact = sanitizeCode(value).slice(0, 8);
-    setGateCodeInput(compact);
-
-    if (compact.length >= 4) {
-      secondCodeInputRef.current?.focus();
-      return;
-    }
-
-    firstCodeInputRef.current?.focus();
-  };
+  const gateCodeIsValid = Boolean(normalizeActivationCode(gateCodeInput));
 
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-10">
@@ -527,42 +493,23 @@ export default function ActivarPage() {
             </h2>
 
             <div className="mx-auto max-w-md">
-              <div className="flex items-center justify-center gap-3" onPaste={(event) => {
-                event.preventDefault();
-                handleCodePaste(event.clipboardData.getData("text"));
-              }}>
+              <div className="flex items-center justify-center">
                 <input
-                  ref={firstCodeInputRef}
-                  value={gateCodeFirstBlock}
-                  onChange={(event) => updateFirstBlock(event.target.value)}
+                  value={gateCodeInput}
+                  onChange={(event) => setGateCodeInput(event.target.value.toUpperCase())}
                   inputMode="text"
-                  maxLength={4}
-                  placeholder="AB12"
-                  className="w-40 rounded-2xl border border-slate-300 px-4 py-5 text-center font-mono text-3xl tracking-[0.28em] uppercase text-slate-900 outline-none ring-sky-400 transition focus:ring-4"
-                />
-                <span className="text-4xl font-black text-slate-400">-</span>
-                <input
-                  ref={secondCodeInputRef}
-                  value={gateCodeSecondBlock}
-                  onChange={(event) => updateSecondBlock(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Backspace" && gateCodeSecondBlock.length === 0) {
-                      event.preventDefault();
-                      firstCodeInputRef.current?.focus();
-                    }
-                  }}
-                  inputMode="text"
-                  maxLength={4}
-                  placeholder="CD34"
-                  className="w-40 rounded-2xl border border-slate-300 px-4 py-5 text-center font-mono text-3xl tracking-[0.28em] uppercase text-slate-900 outline-none ring-sky-400 transition focus:ring-4"
+                  maxLength={32}
+                  placeholder="A1B2C3D4E5F60718293A4B5C6D7E8F90"
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-5 text-center font-mono text-base tracking-[0.12em] uppercase text-slate-900 outline-none ring-sky-400 transition focus:ring-4"
                 />
               </div>
+              <p className="mt-2 text-center text-xs text-slate-500">Formato aceptado: SOS-XXXX-XXXX, 8 hex o 32 hex.</p>
             </div>
 
             <button
               type="button"
               onClick={handleValidateCode}
-              disabled={gateStatus === "validating" || gateCodeCompact.length !== 8}
+              disabled={gateStatus === "validating" || !gateCodeIsValid}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-lg font-semibold text-white disabled:opacity-50"
             >
               {gateStatus === "validating" ? (
