@@ -10,6 +10,10 @@ RUN apt-get update -y \
 ARG DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder?schema=public"
 ENV DATABASE_URL=$DATABASE_URL
 
+# Prisma config also resolves the direct connection during build.
+ARG DIRECT_DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder?schema=public"
+ENV DIRECT_DATABASE_URL=$DIRECT_DATABASE_URL
+
 COPY package*.json ./
 RUN npm ci
 
