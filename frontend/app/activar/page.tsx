@@ -469,7 +469,7 @@ export default function ActivarPage() {
       <section className="mx-auto w-full max-w-xl rounded-xl bg-white p-6 shadow-sm">
         <header className="mb-6">
           <div className="mb-3 flex justify-center">
-            <img src="/sos-logo-light.svg" alt="Logo SOSeguro" className="h-auto w-[260px] md:w-[320px]" />
+            <img src="/sos-logo-light.png" alt="Logo SOSeguro" className="h-auto w-[260px] md:w-[320px]" />
           </div>
           <h1 className="text-center text-2xl font-semibold text-slate-900">Activar cuenta SOSeguro</h1>
           <p className="mt-1 text-center text-sm text-slate-600">{stepLabel}</p>
