@@ -221,16 +221,21 @@ export default function DashboardPage() {
     setIsUnlinkingLabel(true);
     setMessage(null);
     try {
-      await unlinkActivationCode(linkedCode);
+      const result = await unlinkActivationCode(linkedCode);
       setAccount((current) =>
         current
           ? {
               ...current,
               linkedActivationCode: null,
+              medicalProfile: null,
             }
           : current,
       );
-      setMessage("Etiqueta desvinculada correctamente. Ahora puedes activar una nueva etiqueta desde /a/:id.");
+      setMessage(
+        result.profileDeleted
+          ? "Etiqueta desvinculada y perfil eliminado correctamente."
+          : "Etiqueta desvinculada correctamente.",
+      );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo desvincular la etiqueta");
     } finally {

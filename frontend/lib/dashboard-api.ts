@@ -65,7 +65,7 @@ export async function fetchDashboardProfile(): Promise<DashboardAccount | null> 
   return response.json() as Promise<DashboardAccount>;
 }
 
-export async function unlinkActivationCode(code: string): Promise<{ unlinked: boolean; code: string }> {
+export async function unlinkActivationCode(code: string): Promise<{ unlinked: boolean; code: string; profileDeleted: boolean }> {
   const response = await fetchWithAuth(`${API_BASE_URL}/profile/unlink-label`, {
     method: "POST",
     headers: {
@@ -78,7 +78,7 @@ export async function unlinkActivationCode(code: string): Promise<{ unlinked: bo
     throw new Error("No se pudo desvincular la etiqueta");
   }
 
-  return response.json() as Promise<{ unlinked: boolean; code: string }>;
+  return response.json() as Promise<{ unlinked: boolean; code: string; profileDeleted: boolean }>;
 }
 
 export async function acceptPrivacyTerms(termsVersion: string): Promise<{ privacyAccepted: boolean; termsAcceptedAt: string | null; termsVersion: string | null }> {

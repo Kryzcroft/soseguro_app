@@ -100,34 +100,53 @@ export class ProfileService {
     };
   }
 
-  async unlinkActivationCode(userId: string, rawCode: string): Promise<{ unlinked: boolean; code: string }> {
+  async unlinkActivationCode(
+    userId: string,
+    rawCode: string,
+  ): Promise<{ unlinked: boolean; code: string; profileDeleted: boolean }> {
     const code = rawCode.trim().toUpperCase();
     if (!code) {
       throw new BadRequestException("El codigo es requerido para desvincular.");
     }
 
-    const updated = await this.prisma.activationCode.updateMany({
-      where: {
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.activationCode.updateMany({
+        where: {
+          code,
+          userId,
+        },
+        data: {
+          userId: null,
+          status: ActivationCodeStatus.AVAILABLE,
+          isUsed: false,
+          activatedAt: null,
+          usedAt: null,
+        },
+      });
+
+      if (updated.count < 1) {
+        throw new BadRequestException("No se encontro una etiqueta activa con ese codigo para tu cuenta.");
+      }
+
+      const deletedProfile = await tx.medicalProfile.deleteMany({
+        where: { userId },
+      });
+
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          firstName: null,
+          lastName: null,
+          phoneNumber: null,
+        },
+      });
+
+      return {
+        unlinked: true,
         code,
-        userId,
-      },
-      data: {
-        userId: null,
-        status: ActivationCodeStatus.AVAILABLE,
-        isUsed: false,
-        activatedAt: null,
-        usedAt: null,
-      },
+        profileDeleted: deletedProfile.count > 0,
+      };
     });
-
-    if (updated.count < 1) {
-      throw new BadRequestException("No se encontro una etiqueta activa con ese codigo para tu cuenta.");
-    }
-
-    return {
-      unlinked: true,
-      code,
-    };
   }
 
   async acceptPrivacyTerms(userId: string, termsVersion?: string) {
