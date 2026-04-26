@@ -267,17 +267,6 @@ export default function DashboardPage() {
           <div className="rounded-[10px] border border-soseguro-emergency/40 bg-[#FFF1F3] px-4 py-3 text-sm text-soseguro-emergency">{message}</div>
         ) : null}
 
-        <section className="rounded-[10px] border border-soseguro-navy/10 bg-white p-5 shadow-sm">
-          <div className="flex justify-center">
-            <Link
-              href="/emergencia"
-              className="inline-flex w-full max-w-md items-center justify-center rounded-[10px] bg-soseguro-emergency px-8 py-4 text-lg font-bold tracking-[0.04em] text-white shadow-sm transition-transform duration-150 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99]"
-            >
-              ACTIVAR SOS
-            </Link>
-          </div>
-        </section>
-
         <div className="grid gap-4 lg:grid-cols-3">
           <section className="rounded-[10px] border border-soseguro-navy/10 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
