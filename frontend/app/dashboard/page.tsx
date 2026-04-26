@@ -10,7 +10,6 @@ import { isAdminEmail } from "../../lib/admin-identity";
 import {
   acceptPrivacyTerms,
   fetchDashboardProfile,
-  unlinkActivationCode,
   updateProfileVisibility,
 } from "../../lib/dashboard-api";
 import { clearAuthToken, getAuthEmailFromToken, getAuthToken } from "../../lib/auth-client";
@@ -51,7 +50,6 @@ export default function DashboardPage() {
   const [account, setAccount] = useState<Awaited<ReturnType<typeof fetchDashboardProfile>>>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false);
-  const [isUnlinkingLabel, setIsUnlinkingLabel] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -201,45 +199,6 @@ export default function DashboardPage() {
           : current,
       );
     } finally {
-    }
-  };
-
-  const handleUnlinkLabel = async () => {
-    const linkedCode = account?.linkedActivationCode?.code;
-    if (!linkedCode) {
-      setMessage("No tienes una etiqueta vinculada para desvincular.");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `¿Desvincular la etiqueta ${linkedCode}? Quedará disponible para otra activación.`,
-    );
-    if (!confirmed) {
-      return;
-    }
-
-    setIsUnlinkingLabel(true);
-    setMessage(null);
-    try {
-      const result = await unlinkActivationCode(linkedCode);
-      setAccount((current) =>
-        current
-          ? {
-              ...current,
-              linkedActivationCode: null,
-              medicalProfile: null,
-            }
-          : current,
-      );
-      setMessage(
-        result.profileDeleted
-          ? "Etiqueta desvinculada y perfil eliminado correctamente."
-          : "Etiqueta desvinculada correctamente.",
-      );
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No se pudo desvincular la etiqueta");
-    } finally {
-      setIsUnlinkingLabel(false);
     }
   };
 
@@ -417,14 +376,6 @@ export default function DashboardPage() {
                 <p className="mt-1 text-sm text-slate-600">
                   Estado: {account.linkedActivationCode.status} · Activada: {account.linkedActivationCode.activatedAt ? new Date(account.linkedActivationCode.activatedAt).toLocaleString("es-MX") : "N/A"}
                 </p>
-                <button
-                  type="button"
-                  onClick={handleUnlinkLabel}
-                  disabled={isUnlinkingLabel}
-                  className="mt-4 inline-flex w-full items-center justify-center rounded-md border border-soseguro-emergency px-3 py-2 text-sm font-semibold text-soseguro-emergency transition hover:bg-[#FFF1F3] disabled:opacity-50"
-                >
-                  {isUnlinkingLabel ? "Desvinculando..." : "Desvincular etiqueta"}
-                </button>
               </>
             ) : (
               <p className="mt-2 text-sm text-slate-600">No hay etiqueta activa vinculada a tu cuenta.</p>
@@ -437,7 +388,7 @@ export default function DashboardPage() {
             <p className="text-sm font-semibold uppercase text-slate-500">Soporte</p>
             <div className="mt-3 space-y-3">
               <a
-                href="mailto:soporte@soseguro.app?subject=Soporte%20SOSeguro"
+                href="mailto:kryzcroft8790@icloud.com?subject=Soporte%20SOSeguro"
                 className="flex items-center justify-between gap-4 rounded-[10px] border border-soseguro-navy/20 bg-gradient-to-r from-soseguro-navy to-[#1A2E44] px-4 py-4 text-white shadow-sm transition duration-150 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0"
               >
                 <span>
