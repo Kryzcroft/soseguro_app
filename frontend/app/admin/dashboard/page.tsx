@@ -66,6 +66,12 @@ function buildLabelUrl(code?: string | null): string {
   return `${SITE_BASE_URL}/a/${encodeURIComponent(normalizedCode)}`;
 }
 
+function escapeCsvValue(value: unknown): string {
+  const raw = value == null ? "" : String(value);
+  const escaped = raw.replace(/"/g, '""');
+  return `"${escaped}"`;
+}
+
 function QrTools({ targetUrl, label, fileLabel }: QrToolsProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const printCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -442,6 +448,70 @@ export default function AdminDashboardPage() {
     window.setTimeout(() => setSuccessMessage(null), 1500);
   };
 
+  const handleExportActivationCodesCsv = () => {
+    const inventoryByUserId = new Map(inventory.map((row) => [row.userId, row]));
+
+    const headers = [
+      "codigo_activacion",
+      "status",
+      "is_used",
+      "created_at_iso",
+      "used_at_iso",
+      "activated_at_iso",
+      "user_id",
+      "user_email",
+      "full_name",
+      "is_verified",
+      "profile_status",
+      "public_profile_link",
+      "label_qr_url",
+      "nfc_url",
+    ];
+
+    const rows = activationCodes.map((code) => {
+      const linkedUser = code.userId ? inventoryByUserId.get(code.userId) : undefined;
+      const fullName = linkedUser
+        ? [linkedUser.firstName, linkedUser.lastName].filter(Boolean).join(" ")
+        : "";
+      const labelUrl = buildLabelUrl(code.code);
+
+      return [
+        code.code,
+        code.status || (code.isUsed ? "USED" : "AVAILABLE"),
+        code.isUsed ? "true" : "false",
+        code.createdAt,
+        code.usedAt || "",
+        code.activatedAt || "",
+        code.userId || "",
+        code.userEmail || "",
+        fullName,
+        linkedUser ? (linkedUser.isVerified ? "true" : "false") : "",
+        linkedUser?.profileStatus || "",
+        linkedUser?.publicLink || "",
+        labelUrl,
+        labelUrl,
+      ];
+    });
+
+    const csvContent = [headers, ...rows]
+      .map((line) => line.map((cell) => escapeCsvValue(cell)).join(","))
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const date = new Date().toISOString().slice(0, 10);
+    link.href = url;
+    link.download = `soseguro-codigos-activacion-${date}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setSuccessMessage(`CSV exportado con ${rows.length} codigos.`);
+    window.setTimeout(() => setSuccessMessage(null), 2200);
+  };
+
   const handleLogout = () => {
     clearAuthToken();
     router.replace("/login");
@@ -658,6 +728,14 @@ export default function AdminDashboardPage() {
                 className="rounded-md bg-[#0A5E7A] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {isGeneratingCodes ? "Generando..." : "Generar codigos"}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportActivationCodesCsv}
+                className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+              >
+                Exportar CSV
               </button>
             </div>
           </div>
