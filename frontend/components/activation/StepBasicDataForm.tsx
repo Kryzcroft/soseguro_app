@@ -72,7 +72,7 @@ export function StepBasicDataForm(props: StepBasicDataFormProps) {
         disabled={props.isLoading}
         className="w-full rounded-md bg-slate-900 px-4 py-2 text-white disabled:opacity-50"
       >
-        {props.isLoading ? "Enviando correo..." : "Enviar codigo por correo"}
+        {props.isLoading ? "Enviando informacion..." : "Enviar informacion"}
       </button>
     </form>
   );

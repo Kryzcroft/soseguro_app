@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { QRCodeCanvas } from "qrcode.react";
-import { approveUser, assignActivationCode, deleteUserWithRelatedData, fetchAdminDashboard, generateActivationCodes, ProfileStatus } from "../../../lib/admin-api";
+import { approveUser, deleteUserWithRelatedData, fetchAdminDashboard, generateActivationCodes, ProfileStatus } from "../../../lib/admin-api";
 import { clearAuthToken, getAuthToken, UnauthorizedError } from "../../../lib/auth-client";
 
 type FilterOption = "ALL" | ProfileStatus;
@@ -120,8 +120,6 @@ export default function AdminDashboardPage() {
   const [activationSortKey, setActivationSortKey] = useState<ActivationSortKey>("createdAt");
   const [activationSortDirection, setActivationSortDirection] = useState<"asc" | "desc">("desc");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [codeDrafts, setCodeDrafts] = useState<Record<string, string>>({});
-  const [assigningForUserId, setAssigningForUserId] = useState<string | null>(null);
   const [approvingForUserId, setApprovingForUserId] = useState<string | null>(null);
   const [deletingForUserId, setDeletingForUserId] = useState<string | null>(null);
   const [isGeneratingCodes, setIsGeneratingCodes] = useState(false);
@@ -233,27 +231,6 @@ export default function AdminDashboardPage() {
 
     loadDashboard(filter);
   }, [filter, loadDashboard, router, searchTerm]);
-
-  const handleAssignCode = async (userId: string) => {
-    const draft = codeDrafts[userId]?.trim().toUpperCase();
-    if (!draft) {
-      setErrorMessage("Ingresa un codigo antes de asignar.");
-      return;
-    }
-
-    setAssigningForUserId(userId);
-    setErrorMessage(null);
-
-    try {
-      await assignActivationCode(userId, draft);
-      setCodeDrafts((current) => ({ ...current, [userId]: "" }));
-      await loadDashboard(filter);
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "No se pudo asignar el codigo.");
-    } finally {
-      setAssigningForUserId(null);
-    }
-  };
 
   const handleGenerateCodes = async () => {
     const raw = window.prompt("Cuantos codigos nuevos necesitas? (1-500)", "50");
@@ -416,7 +393,6 @@ export default function AdminDashboardPage() {
                     <th className="px-3 py-2">Estatus cuenta</th>
                     <th className="px-3 py-2">Codigo</th>
                     <th className="px-3 py-2">URL completa QR/NFC</th>
-                    <th className="px-3 py-2">Asignacion manual</th>
                     <th className="px-3 py-2">Eliminar</th>
                     <th className="px-3 py-2">QR y NFC</th>
                   </tr>
@@ -491,26 +467,6 @@ export default function AdminDashboardPage() {
                         ) : (
                           "No disponible"
                         )}
-                      </td>
-                      <td className="px-3 py-3">
-                        <div className="flex gap-2">
-                          <input
-                            value={codeDrafts[row.userId] || ""}
-                            onChange={(event) =>
-                              setCodeDrafts((current) => ({ ...current, [row.userId]: event.target.value }))
-                            }
-                            placeholder="A1B2C3D4E5F60718293A4B5C6D7E8F90"
-                            className="w-36 rounded-md border border-slate-300 px-2 py-1 text-xs uppercase"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleAssignCode(row.userId)}
-                            disabled={assigningForUserId === row.userId}
-                            className="rounded-md bg-slate-900 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50"
-                          >
-                            {assigningForUserId === row.userId ? "Asignando..." : "Asignar"}
-                          </button>
-                        </div>
                       </td>
                       <td className="px-3 py-3">
                         <button

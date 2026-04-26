@@ -352,6 +352,7 @@ export default function ActivarPage() {
     }
 
     setErrorMessage(null);
+    setInfoMessage(null);
     setIsLoading(true);
     try {
       const response = await sendEmailCode(state.userId, values);
@@ -367,6 +368,7 @@ export default function ActivarPage() {
         return;
       }
 
+      setInfoMessage("Informacion enviada.");
       setState((prev) => ({
         ...prev,
         basicDataValues: values,
