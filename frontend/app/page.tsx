@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { AlertTriangle, CheckCircle2, MapPin } from "lucide-react";
+import { CheckCircle2, MapPin } from "lucide-react";
 
 const SOS_LOGO = "/sos-logo-light.png";
 
@@ -18,14 +17,7 @@ export default function LandingPage() {
 
         <section className="so-card rounded-[10px] border border-soseguro-navy/10 p-6">
           <h2 className="text-2xl font-bold">Activacion de Emergencia</h2>
-          <p className="mt-2 text-base text-soseguro-navy/80">Un solo toque para iniciar protocolo SOS y notificar a contactos.</p>
-
-          <div className="mt-6">
-            <Link href="/emergencia" className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-soseguro-emergency px-6 py-5 text-2xl font-bold text-white transition-transform duration-150 active:scale-[0.99] md:w-auto">
-              <AlertTriangle size={24} />
-              ACTIVAR SOS
-            </Link>
-          </div>
+          <p className="mt-2 text-base text-soseguro-navy/80">Activa tu protocolo SOS desde tu perfil publico al escanear tu QR/NFC.</p>
         </section>
 
         <section className="grid gap-4 md:grid-cols-2">
