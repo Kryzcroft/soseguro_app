@@ -19,10 +19,11 @@ type QrToolsProps = {
 
 const SITE_BASE_URL = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "";
 const PRINT_LABEL_TEMPLATE_URL = "/helmet-label-template.png";
+const PRINT_TEMPLATE_BASE_HEIGHT = 1329;
 const PRINT_QR_PLACEMENT = {
-  xRatio: 0.15,
-  yRatio: 0.225,
-  sizeRatio: 0.7,
+  xRatio: 0.167,
+  yRatio: 0.257,
+  sizeRatio: 0.662,
 };
 
 function loadImage(url: string): Promise<HTMLImageElement> {
@@ -131,15 +132,19 @@ function QrTools({ targetUrl, label, fileLabel }: QrToolsProps) {
       drawFallbackLabelTemplate(ctx, width, height);
     }
 
+    const qrYOffsetPx = Math.round((height / PRINT_TEMPLATE_BASE_HEIGHT) * 6);
     const qrSize = Math.round(width * PRINT_QR_PLACEMENT.sizeRatio);
     const qrX = Math.round(width * PRINT_QR_PLACEMENT.xRatio);
-    const qrY = Math.round(height * PRINT_QR_PLACEMENT.yRatio);
+    const qrY = Math.round(height * PRINT_QR_PLACEMENT.yRatio) + qrYOffsetPx;
     ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
 
+    const activationLabel = (fileLabel || "ETIQUETA").toUpperCase();
     ctx.fillStyle = "#0C2340";
-    ctx.font = `${Math.round(width * 0.035)}px monospace`;
+    ctx.font = `${Math.round(width * 0.02)}px monospace`;
     ctx.textAlign = "center";
-    ctx.fillText((fileLabel || "ETIQUETA").toUpperCase(), Math.round(width / 2), Math.round(height * 0.9));
+    const keyX = Math.round(width * 0.5);
+    const keyY = Math.round(height * 0.585);
+    ctx.fillText(activationLabel, keyX, keyY);
 
     exportCanvas.toBlob((blob) => {
       if (!blob) {
