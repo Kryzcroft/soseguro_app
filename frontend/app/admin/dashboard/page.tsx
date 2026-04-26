@@ -18,6 +18,43 @@ type QrToolsProps = {
 };
 
 const SITE_BASE_URL = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "";
+const PRINT_LABEL_TEMPLATE_URL = "/helmet-label-template.png";
+const PRINT_QR_PLACEMENT = {
+  xRatio: 0.15,
+  yRatio: 0.225,
+  sizeRatio: 0.7,
+};
+
+function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error(`No se pudo cargar la imagen: ${url}`));
+    image.src = url;
+  });
+}
+
+function drawFallbackLabelTemplate(ctx: CanvasRenderingContext2D, width: number, height: number) {
+  ctx.fillStyle = "#F4F6FA";
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.strokeStyle = "#0C2340";
+  ctx.lineWidth = Math.max(6, Math.round(width * 0.01));
+  ctx.strokeRect(8, 8, width - 16, height - 16);
+
+  const topBandHeight = Math.round(height * 0.17);
+  ctx.fillStyle = "#E11D2E";
+  ctx.fillRect(0, 0, width * 0.52, topBandHeight);
+
+  ctx.fillStyle = "#0C2340";
+  ctx.font = `${Math.round(width * 0.09)}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.fillText("SOSeguro", Math.round(width * 0.25), Math.round(topBandHeight * 0.72));
+
+  ctx.fillStyle = "#0C2340";
+  ctx.font = `${Math.round(width * 0.07)}px sans-serif`;
+  ctx.fillText("PERFIL MEDICO DIGITAL", Math.round(width * 0.5), Math.round(height * 0.54));
+}
 
 function buildLabelUrl(code?: string | null): string {
   const normalizedCode = code?.trim().toUpperCase();
@@ -30,6 +67,7 @@ function buildLabelUrl(code?: string | null): string {
 
 function QrTools({ targetUrl, label, fileLabel }: QrToolsProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const printCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
 
   const finalUrl = useMemo(() => targetUrl?.trim() || "", [targetUrl]);
@@ -37,11 +75,12 @@ function QrTools({ targetUrl, label, fileLabel }: QrToolsProps) {
   const disabled = !finalUrl;
 
   const downloadQr = useCallback(() => {
-    if (!canvasRef.current || disabled) {
+    const sourceCanvas = printCanvasRef.current || canvasRef.current;
+    if (!sourceCanvas || disabled) {
       return;
     }
 
-    canvasRef.current.toBlob((blob) => {
+    sourceCanvas.toBlob((blob) => {
       if (!blob) {
         return;
       }
@@ -55,6 +94,71 @@ function QrTools({ targetUrl, label, fileLabel }: QrToolsProps) {
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     }, "image/png");
   }, [disabled]);
+
+  const downloadPrintableLabel = useCallback(async () => {
+    if (disabled) {
+      return;
+    }
+
+    const qrCanvas = printCanvasRef.current || canvasRef.current;
+    if (!qrCanvas) {
+      setCopyMessage("No se pudo generar QR para impresion.");
+      return;
+    }
+
+    let templateImage: HTMLImageElement | null = null;
+    try {
+      templateImage = await loadImage(PRINT_LABEL_TEMPLATE_URL);
+    } catch {
+      templateImage = null;
+    }
+
+    const width = templateImage?.naturalWidth || 760;
+    const height = templateImage?.naturalHeight || 1600;
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = width;
+    exportCanvas.height = height;
+
+    const ctx = exportCanvas.getContext("2d");
+    if (!ctx) {
+      setCopyMessage("No se pudo preparar la etiqueta para impresion.");
+      return;
+    }
+
+    if (templateImage) {
+      ctx.drawImage(templateImage, 0, 0, width, height);
+    } else {
+      drawFallbackLabelTemplate(ctx, width, height);
+    }
+
+    const qrSize = Math.round(width * PRINT_QR_PLACEMENT.sizeRatio);
+    const qrX = Math.round(width * PRINT_QR_PLACEMENT.xRatio);
+    const qrY = Math.round(height * PRINT_QR_PLACEMENT.yRatio);
+    ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+
+    ctx.fillStyle = "#0C2340";
+    ctx.font = `${Math.round(width * 0.035)}px monospace`;
+    ctx.textAlign = "center";
+    ctx.fillText((fileLabel || "ETIQUETA").toUpperCase(), Math.round(width / 2), Math.round(height * 0.9));
+
+    exportCanvas.toBlob((blob) => {
+      if (!blob) {
+        setCopyMessage("No se pudo exportar la etiqueta.");
+        return;
+      }
+
+      const normalizedFileLabel = (fileLabel || "etiqueta").replace(/[^A-Z0-9_-]/gi, "");
+      const link = document.createElement("a");
+      link.download = `etiqueta-${normalizedFileLabel || "soseguro"}.png`;
+      const objectUrl = URL.createObjectURL(blob);
+      link.href = objectUrl;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+
+      setCopyMessage(templateImage ? "Etiqueta lista para imprimir." : "Etiqueta generada con plantilla base.");
+      window.setTimeout(() => setCopyMessage(null), 1800);
+    }, "image/png");
+  }, [disabled, fileLabel]);
 
   const copyForNfc = useCallback(async () => {
     if (disabled) {
@@ -82,6 +186,18 @@ function QrTools({ targetUrl, label, fileLabel }: QrToolsProps) {
         />
       </div>
 
+      <div className="hidden">
+        <QRCodeCanvas
+          ref={(node) => {
+            printCanvasRef.current = node;
+          }}
+          value={finalUrl || "about:blank"}
+          size={1024}
+          level="H"
+          includeMargin
+        />
+      </div>
+
       <button
         type="button"
         onClick={downloadQr}
@@ -89,6 +205,15 @@ function QrTools({ targetUrl, label, fileLabel }: QrToolsProps) {
         className="w-full rounded-md border px-2 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50"
       >
         Descargar QR
+      </button>
+
+      <button
+        type="button"
+        onClick={downloadPrintableLabel}
+        disabled={disabled}
+        className="w-full rounded-md border border-slate-900 px-2 py-1 text-xs font-semibold text-slate-900 disabled:opacity-50"
+      >
+        Descargar Etiqueta
       </button>
 
       <button
