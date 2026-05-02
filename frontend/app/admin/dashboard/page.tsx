@@ -190,7 +190,7 @@ function QrTools({ targetUrl, label, fileLabel }: QrToolsProps) {
 
   return (
     <div className="space-y-2">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">URL completa QR/NFC</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Acceso QR/NFC</p>
       <p className="break-all rounded-md bg-slate-50 px-2 py-1 text-[11px] font-mono text-slate-700">{label}</p>
       <div className="rounded-md border border-slate-200 bg-slate-50 p-2">
         <QRCodeCanvas
@@ -628,9 +628,8 @@ export default function AdminDashboardPage() {
                     <th className="px-3 py-2">Estatus perfil</th>
                     <th className="px-3 py-2">Estatus cuenta</th>
                     <th className="px-3 py-2">Codigo</th>
-                    <th className="px-3 py-2">URL completa QR/NFC</th>
+                    <th className="px-3 py-2">Acceso</th>
                     <th className="px-3 py-2">Eliminar</th>
-                    <th className="px-3 py-2">QR y NFC</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -695,32 +694,22 @@ export default function AdminDashboardPage() {
                       <td className="px-3 py-3 font-mono text-xs text-slate-700">
                         {row.activationCode?.code || "Sin codigo"}
                       </td>
-                      <td className="px-3 py-3 text-xs text-slate-600">
-                        {buildLabelUrl(row.activationCode?.code) ? (
-                          <div className="space-y-2">
-                            <a
-                              href={buildLabelUrl(row.activationCode?.code)}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="break-all font-mono text-blue-700 underline"
-                            >
-                              {buildLabelUrl(row.activationCode?.code)}
-                            </a>
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                await navigator.clipboard.writeText(buildLabelUrl(row.activationCode?.code));
-                                setSuccessMessage("URL de etiqueta copiada.");
-                                window.setTimeout(() => setSuccessMessage(null), 1500);
-                              }}
-                              className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700"
-                            >
-                              Copiar URL
-                            </button>
-                          </div>
-                        ) : (
-                          "No disponible"
-                        )}
+                      <td className="px-3 py-3">
+                        {(() => {
+                          const labelUrl = buildLabelUrl(row.activationCode?.code);
+                          const fallbackUrl = row.publicLink || "";
+                          const finalUrl = labelUrl || fallbackUrl;
+                          const label = finalUrl || "Sin URL";
+                          const fileLabel = row.activationCode?.code || row.userId;
+
+                          return (
+                            <QrTools
+                              targetUrl={finalUrl}
+                              label={label}
+                              fileLabel={fileLabel}
+                            />
+                          );
+                        })()}
                       </td>
                       <td className="px-3 py-3">
                         <button
@@ -731,23 +720,6 @@ export default function AdminDashboardPage() {
                         >
                           {deletingForUserId === row.userId ? "Eliminando..." : "Eliminar"}
                         </button>
-                      </td>
-                      <td className="px-3 py-3">
-                        {(() => {
-                          const labelUrl = buildLabelUrl(row.activationCode?.code);
-                          const fallbackUrl = row.publicLink || "";
-                          const finalUrl = labelUrl || fallbackUrl;
-                          const label = finalUrl || "Sin URL";
-                          const fileLabel = row.activationCode?.code || row.userId;
-
-                          return (
-                        <QrTools
-                          targetUrl={finalUrl}
-                          label={label}
-                          fileLabel={fileLabel}
-                        />
-                          );
-                        })()}
                       </td>
                     </tr>
                   ))}
