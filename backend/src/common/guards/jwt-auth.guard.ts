@@ -7,12 +7,14 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { Reflector } from "@nestjs/core";
 import { JwtService } from "@nestjs/jwt";
+import { PrismaService } from "../../prisma/prisma.service";
 import { IS_PUBLIC_KEY } from "../decorators/public.decorator";
 
 type JwtPayload = {
   sub?: string;
   email?: string;
   isVerified?: boolean;
+  iat?: number;
 };
 
 @Injectable()
@@ -21,6 +23,7 @@ export class JwtAuthGuard implements CanActivate {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly reflector: Reflector,
+    private readonly prisma: PrismaService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -49,6 +52,22 @@ export class JwtAuthGuard implements CanActivate {
 
       if (!payload.sub) {
         throw new UnauthorizedException("Token invalido.");
+      }
+
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+        select: { passwordChangedAt: true },
+      });
+
+      if (!user) {
+        throw new UnauthorizedException("Token invalido.");
+      }
+
+      if (user.passwordChangedAt && typeof payload.iat === "number") {
+        const issuedAt = payload.iat * 1000;
+        if (issuedAt < user.passwordChangedAt.getTime()) {
+          throw new UnauthorizedException("Sesion invalidada por cambio de contrasena.");
+        }
       }
 
       request.user = {

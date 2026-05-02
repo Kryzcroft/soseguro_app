@@ -172,14 +172,19 @@ export default function ActivarPage() {
     }
 
     setGateCodeInput(normalized);
-    setState((prev) => ({
-      ...prev,
-      step: 1,
-      activateValues: {
-        ...prev.activateValues,
-        activationCode: normalized,
-      },
-    }));
+    setState((prev) => {
+      if (prev.activateValues.activationCode === normalized) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        activateValues: {
+          ...prev.activateValues,
+          activationCode: normalized,
+        },
+      };
+    });
 
     let active = true;
     const verifyCodeState = async () => {
@@ -197,9 +202,15 @@ export default function ActivarPage() {
           return;
         }
 
-        if (status === "USED" && state.step > 1 && state.userId) {
-          setGateStatus("validated");
-          setErrorMessage(null);
+        if (status === "USED") {
+          if (state.userId && state.activateValues.activationCode.trim().toUpperCase() === normalized) {
+            setGateStatus("validated");
+            setErrorMessage(null);
+            return;
+          }
+
+          setGateStatus("invalid");
+          setErrorMessage("Este codigo ya fue activado. Inicia sesion con tu cuenta.");
           return;
         }
 
@@ -327,6 +338,11 @@ export default function ActivarPage() {
         activationCode: normalizedCode,
       });
 
+      // Evita revalidaciones por query param ya consumido al avanzar de paso.
+      if (typeof window !== "undefined" && window.location.search) {
+        window.history.replaceState({}, "", window.location.pathname);
+      }
+
       setState((prev) => ({
         ...prev,
         activateValues: {
@@ -363,7 +379,7 @@ export default function ActivarPage() {
         setInfoMessage("Cuenta creada. Esta pendiente de aprobacion por el administrador.");
         setErrorMessage(null);
         window.setTimeout(() => {
-          router.push("/login");
+          router.replace("/login");
         }, 1200);
         return;
       }

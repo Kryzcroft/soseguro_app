@@ -85,3 +85,30 @@ export async function verifyEmailCode(userId: string, code: string) {
     code,
   });
 }
+
+export async function validatePasswordResetToken(token: string): Promise<{ valid: true; expiresAt: string }> {
+  const response = await fetch(`${API_BASE_URL}/auth/password-reset/${encodeURIComponent(token)}`);
+
+  if (!response.ok) {
+    const fallback = "No se pudo validar el enlace de restablecimiento.";
+    let message = fallback;
+
+    try {
+      const body = await response.json();
+      message = body.message || fallback;
+    } catch {
+      message = fallback;
+    }
+
+    throw new Error(Array.isArray(message) ? message.join(", ") : message);
+  }
+
+  return response.json() as Promise<{ valid: true; expiresAt: string }>;
+}
+
+export async function resetPassword(token: string, password: string): Promise<{ reset: true }> {
+  return postJson<{ reset: true }>("/auth/password-reset", {
+    token,
+    password,
+  });
+}

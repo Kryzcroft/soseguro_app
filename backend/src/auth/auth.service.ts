@@ -8,10 +8,12 @@ import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { ActivationCodeStatus, User } from "@prisma/client";
 import * as argon2 from "argon2";
-import { randomUUID } from "crypto";
+import { createHash, randomBytes, randomUUID } from "crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { ActivateDto } from "./dto/activate.dto";
+import { AdminResetPasswordDto } from "./dto/admin-reset-password.dto";
 import { LoginDto } from "./dto/login.dto";
+import { ResetPasswordDto } from "./dto/reset-password.dto";
 import { RegisterBasicDto } from "./dto/register-basic.dto";
 import { SendEmailDto } from "./dto/send-email.dto";
 import { VerifyEmailDto } from "./dto/verify-email.dto";
@@ -248,6 +250,102 @@ export class AuthService {
     return { token };
   }
 
+  async createPasswordResetLink(adminUserId: string, dto: AdminResetPasswordDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: dto.userId },
+      select: {
+        id: true,
+        email: true,
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException("Usuario no encontrado.");
+    }
+
+    const rawToken = randomBytes(32).toString("hex");
+    const tokenHash = this.hashPasswordResetToken(rawToken);
+    const expiresInMinutes = Number(this.configService.get<string>("PASSWORD_RESET_TTL_MINUTES") ?? 60);
+    const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.passwordResetToken.deleteMany({
+        where: {
+          userId: user.id,
+          usedAt: null,
+        },
+      });
+
+      await tx.passwordResetToken.create({
+        data: {
+          userId: user.id,
+          tokenHash,
+          expiresAt,
+          requestedByAdminId: adminUserId,
+        },
+      });
+    });
+
+    return {
+      userId: user.id,
+      email: user.email,
+      resetUrl: this.buildPasswordResetUrl(rawToken),
+      expiresAt,
+      expiresInMinutes,
+    };
+  }
+
+  async validatePasswordResetToken(token: string) {
+    const passwordResetToken = await this.findActivePasswordResetToken(token);
+
+    if (!passwordResetToken) {
+      throw new BadRequestException("El enlace de restablecimiento no es valido o ya expiro.");
+    }
+
+    return {
+      valid: true,
+      expiresAt: passwordResetToken.expiresAt,
+    };
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    const passwordResetToken = await this.findActivePasswordResetToken(dto.token);
+
+    if (!passwordResetToken) {
+      throw new BadRequestException("El enlace de restablecimiento no es valido o ya expiro.");
+    }
+
+    const hashedPassword = await argon2.hash(dto.password);
+    const now = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: passwordResetToken.userId },
+        data: {
+          password: hashedPassword,
+          passwordChangedAt: now,
+        },
+      });
+
+      await tx.passwordResetToken.update({
+        where: { id: passwordResetToken.id },
+        data: {
+          usedAt: now,
+        },
+      });
+
+      await tx.passwordResetToken.deleteMany({
+        where: {
+          userId: passwordResetToken.userId,
+          usedAt: null,
+          id: { not: passwordResetToken.id },
+        },
+      });
+    });
+
+    return { reset: true };
+  }
+
   async acceptTerms(userId: string, termsVersion?: string) {
     const currentTermsVersion = termsVersion ?? this.configService.get<string>("LEGAL_TERMS_VERSION") ?? "2026-04-15";
 
@@ -390,5 +488,40 @@ export class AuthService {
     }
 
     return candidates;
+  }
+
+  private async findActivePasswordResetToken(token: string) {
+    const tokenHash = this.hashPasswordResetToken(token);
+    const now = new Date();
+
+    return this.prisma.passwordResetToken.findFirst({
+      where: {
+        tokenHash,
+        usedAt: null,
+        expiresAt: {
+          gt: now,
+        },
+      },
+      select: {
+        id: true,
+        userId: true,
+        expiresAt: true,
+      },
+    });
+  }
+
+  private hashPasswordResetToken(token: string): string {
+    return createHash("sha256").update(token.trim()).digest("hex");
+  }
+
+  private buildPasswordResetUrl(token: string): string {
+    const rawSiteBase =
+      this.configService.get<string>("PUBLIC_SITE_URL") ||
+      this.configService.get<string>("PUBLIC_PROFILE_BASE_URL") ||
+      "http://localhost:3000";
+    const normalizedBase = rawSiteBase.replace(/\/$/, "");
+    const siteBase = normalizedBase.endsWith("/p") ? normalizedBase.slice(0, -2) : normalizedBase;
+
+    return `${siteBase}/reset-password/${encodeURIComponent(token)}`;
   }
 }

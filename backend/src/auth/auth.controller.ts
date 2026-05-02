@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { CurrentUser, CurrentUserData } from "../common/decorators/current-user.decorator";
 import { Public } from "../common/decorators/public.decorator";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
@@ -8,6 +8,7 @@ import {
 } from "../common/guards/auth-attempt-rate-limit.guard";
 import { AuthService } from "./auth.service";
 import { ActivateDto } from "./dto/activate.dto";
+import { ResetPasswordDto } from "./dto/reset-password.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterBasicDto } from "./dto/register-basic.dto";
 import { SendEmailDto } from "./dto/send-email.dto";
@@ -67,6 +68,18 @@ export class AuthController {
   @Public()
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @Get("password-reset/:token")
+  @Public()
+  validatePasswordResetToken(@Param("token") token: string) {
+    return this.authService.validatePasswordResetToken(token);
+  }
+
+  @Post("password-reset")
+  @Public()
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
   }
 
   @Patch("accept-terms")

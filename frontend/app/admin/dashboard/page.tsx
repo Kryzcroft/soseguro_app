@@ -3,7 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { QRCodeCanvas } from "qrcode.react";
-import { approveUser, deleteUserWithRelatedData, fetchAdminDashboard, generateActivationCodes, ProfileStatus } from "../../../lib/admin-api";
+import {
+  approveUser,
+  createPasswordResetLink,
+  deleteUserWithRelatedData,
+  fetchAdminDashboard,
+  generateActivationCodes,
+  ProfileStatus,
+} from "../../../lib/admin-api";
 import { clearAuthToken, getAuthToken, UnauthorizedError } from "../../../lib/auth-client";
 
 type FilterOption = "ALL" | ProfileStatus;
@@ -257,6 +264,7 @@ export default function AdminDashboardPage() {
   const [activationSortDirection, setActivationSortDirection] = useState<"asc" | "desc">("desc");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [approvingForUserId, setApprovingForUserId] = useState<string | null>(null);
+  const [resettingPasswordForUserId, setResettingPasswordForUserId] = useState<string | null>(null);
   const [deletingForUserId, setDeletingForUserId] = useState<string | null>(null);
   const [isGeneratingCodes, setIsGeneratingCodes] = useState(false);
 
@@ -409,6 +417,34 @@ export default function AdminDashboardPage() {
       setErrorMessage(error instanceof Error ? error.message : "No se pudo aprobar la cuenta.");
     } finally {
       setApprovingForUserId(null);
+    }
+  };
+
+  const handleResetPassword = async (userId: string, email: string) => {
+    setResettingPasswordForUserId(userId);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      const result = await createPasswordResetLink(userId);
+
+      try {
+        await navigator.clipboard.writeText(result.resetUrl);
+        setSuccessMessage(
+          `Enlace de restablecimiento copiado para ${email}. Vence en ${result.expiresInMinutes} minutos.`,
+        );
+      } catch {
+        window.prompt("Copia y comparte este enlace con el usuario", result.resetUrl);
+        setSuccessMessage(
+          `Enlace generado para ${email}. Vence en ${result.expiresInMinutes} minutos.`,
+        );
+      }
+
+      await loadDashboard(filter);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "No se pudo generar el enlace de restablecimiento.");
+    } finally {
+      setResettingPasswordForUserId(null);
     }
   };
 
@@ -619,9 +655,19 @@ export default function AdminDashboardPage() {
                       </td>
                       <td className="px-3 py-3">
                         {row.isVerified ? (
-                          <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">
-                            Aprobada
-                          </span>
+                          <div className="space-y-2">
+                            <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">
+                              Aprobada
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleResetPassword(row.userId, row.email)}
+                              disabled={resettingPasswordForUserId === row.userId}
+                              className="block rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50"
+                            >
+                              {resettingPasswordForUserId === row.userId ? "Generando..." : "Reset contraseña"}
+                            </button>
+                          </div>
                         ) : (
                           <div className="space-y-2">
                             <span className="inline-block rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-700">
@@ -634,6 +680,14 @@ export default function AdminDashboardPage() {
                               className="block rounded-md bg-emerald-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-50"
                             >
                               {approvingForUserId === row.userId ? "Aprobando..." : "Aprobar"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleResetPassword(row.userId, row.email)}
+                              disabled={resettingPasswordForUserId === row.userId}
+                              className="block rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50"
+                            >
+                              {resettingPasswordForUserId === row.userId ? "Generando..." : "Reset contraseña"}
                             </button>
                           </div>
                         )}

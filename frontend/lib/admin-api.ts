@@ -42,6 +42,14 @@ export type AdminDashboardResponse = {
   activationCodes: AdminActivationCodeRow[];
 };
 
+export type AdminPasswordResetLinkResponse = {
+  userId: string;
+  email: string;
+  resetUrl: string;
+  expiresAt: string;
+  expiresInMinutes: number;
+};
+
 export async function fetchAdminDashboard(
   profileStatus?: ProfileStatus,
   search?: string,
@@ -185,4 +193,34 @@ export async function deleteUserWithRelatedData(userId: string): Promise<{ delet
   }
 
   return response.json() as Promise<{ deleted: boolean; userId: string; releasedActivationCodes: number }>;
+}
+
+export async function createPasswordResetLink(userId: string): Promise<AdminPasswordResetLinkResponse> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/admin/dashboard/reset-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ userId }),
+  });
+
+  if (response.status === 403) {
+    throw new Error("Acceso denegado: esta vista solo esta habilitada para Cristian.");
+  }
+
+  if (!response.ok) {
+    const fallback = "No se pudo generar el enlace de restablecimiento.";
+    let message = fallback;
+
+    try {
+      const body = await response.json();
+      message = body.message || fallback;
+    } catch {
+      message = fallback;
+    }
+
+    throw new Error(Array.isArray(message) ? message.join(", ") : message);
+  }
+
+  return response.json() as Promise<AdminPasswordResetLinkResponse>;
 }
