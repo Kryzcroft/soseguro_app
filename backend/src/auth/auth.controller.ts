@@ -5,6 +5,8 @@ import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import {
   AuthActivateRateLimitGuard,
   AuthCheckCodeRateLimitGuard,
+  AuthLoginRateLimitGuard,
+  AuthSendEmailRateLimitGuard,
 } from "../common/guards/auth-attempt-rate-limit.guard";
 import { AuthService } from "./auth.service";
 import { ActivateDto } from "./dto/activate.dto";
@@ -54,6 +56,7 @@ export class AuthController {
 
   @Post("send-email")
   @Public()
+  @UseGuards(AuthSendEmailRateLimitGuard)
   sendEmail(@Body() dto: SendEmailDto) {
     return this.authService.sendEmail(dto);
   }
@@ -66,6 +69,7 @@ export class AuthController {
 
   @Post("login")
   @Public()
+  @UseGuards(AuthLoginRateLimitGuard)
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
