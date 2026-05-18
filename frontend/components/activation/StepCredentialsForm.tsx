@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import { Eye, EyeOff } from "lucide-react";
 import { getActivationCodeStatus } from "../../lib/activation-api";
 import { activateSchema, ActivateValues } from "../../lib/activation-schemas";
 
@@ -17,6 +18,7 @@ export function StepCredentialsForm(props: StepCredentialsFormProps) {
   const [codeStatus, setCodeStatus] = useState<"idle" | "checking" | "valid" | "used" | "invalid" | "error">(
     "idle",
   );
+  const [showPassword, setShowPassword] = useState(false);
 
   const { register, handleSubmit, formState, watch } = useForm<ActivateValues>({
     resolver: zodResolver(activateSchema),
@@ -120,11 +122,22 @@ export function StepCredentialsForm(props: StepCredentialsFormProps) {
 
       <div>
         <label className="mb-1 block text-sm font-medium">Contrasena</label>
-        <input
-          type="password"
-          className="w-full rounded-md border border-slate-300 px-3 py-2"
-          {...register("password")}
-        />
+        <div className="relative">
+          <input
+            type={showPassword ? "text" : "password"}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 pr-10"
+            {...register("password")}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((current) => !current)}
+            className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 transition-colors hover:text-slate-700"
+            aria-label={showPassword ? "Ocultar contrasena" : "Mostrar contrasena"}
+            aria-pressed={showPassword}
+          >
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
         {formState.errors.password && (
           <p className="mt-1 text-sm text-red-600">{formState.errors.password.message}</p>
         )}
