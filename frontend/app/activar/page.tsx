@@ -493,6 +493,12 @@ export default function ActivarPage() {
           </div>
           <h1 className="text-center text-2xl font-semibold text-slate-900">Activar cuenta SOSeguro</h1>
           <p className="mt-1 text-center text-sm text-slate-600">{stepLabel}</p>
+
+          {state.step === 1 && gateStatus === "validated" && (
+            <p className="mt-3 text-center text-sm text-slate-600">
+              Ya validado el código de activación, tienes que ingresar un correo electrónico y crear una contraseña de mínimo 8 caracteres para acceder a tu perfil.
+            </p>
+          )}
         </header>
 
         {state.verifiedToken ? (
