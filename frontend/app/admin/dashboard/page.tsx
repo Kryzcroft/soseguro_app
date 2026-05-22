@@ -310,13 +310,28 @@ export default function AdminDashboardPage() {
     return sorted;
   }, [activationCodes, activationSortDirection, activationSortKey, activationStatusFilter]);
 
-  const principalCodeByUserId = useMemo(() => {
-    return new Map(
-      inventory
-        .filter((row) => Boolean(row.activationCode?.code))
-        .map((row) => [row.userId, row.activationCode?.code || ""]),
-    );
-  }, [inventory]);
+  const activationCodesByUserId = useMemo(() => {
+    const grouped = new Map<string, typeof activationCodes>();
+
+    for (const code of activationCodes) {
+      if (!code.userId) {
+        continue;
+      }
+
+      const rows = grouped.get(code.userId) ?? [];
+      rows.push(code);
+      grouped.set(code.userId, rows);
+    }
+
+    grouped.forEach((rows) => {
+      rows.sort(
+        (left, right) =>
+          new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime(),
+      );
+    });
+
+    return grouped;
+  }, [activationCodes]);
 
   const handleAssignCode = async (codeRow: { id: string; code: string }) => {
     try {
@@ -440,15 +455,6 @@ export default function AdminDashboardPage() {
     } finally {
       setReleasingForCodeId(null);
     }
-  };
-
-  const isMirrorActivationCode = (codeRow: { code: string; userId: string | null }) => {
-    if (!codeRow.userId) {
-      return false;
-    }
-
-    const principalCode = principalCodeByUserId.get(codeRow.userId);
-    return Boolean(principalCode && principalCode !== codeRow.code);
   };
 
   const filteredInventory = useMemo(() => {
@@ -840,24 +846,42 @@ export default function AdminDashboardPage() {
                         )}
                       </td>
                       <td className="px-3 py-3 font-mono text-xs text-slate-700">
-                        <div className="flex items-center gap-2">
-                          <span>{row.activationCode?.code || "Sin codigo"}</span>
-                          {activationCodes.some(
-                            (c) => c.userId === row.userId && c.code !== (row.activationCode?.code ?? ""),
-                          ) ? (
-                            <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">
-                              Espejo
-                            </span>
-                          ) : null}
-                        </div>
+                        {(() => {
+                          const userCodes = activationCodesByUserId.get(row.userId) ?? [];
+
+                          if (!userCodes.length) {
+                            return <span>Sin codigo</span>;
+                          }
+
+                          return (
+                            <div className="space-y-1">
+                              {userCodes.map((codeRow, index) => (
+                                <div key={codeRow.id} className="flex items-center gap-2">
+                                  <span>{codeRow.code}</span>
+                                  <span
+                                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                      index === 0
+                                        ? "bg-emerald-100 text-emerald-700"
+                                        : "bg-indigo-100 text-indigo-700"
+                                    }`}
+                                  >
+                                    {index === 0 ? "Principal" : "Espejo"}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-3 py-3">
                         {(() => {
-                          const labelUrl = buildLabelUrl(row.activationCode?.code);
+                          const userCodes = activationCodesByUserId.get(row.userId) ?? [];
+                          const primaryCode = userCodes[0]?.code || row.activationCode?.code || null;
+                          const labelUrl = buildLabelUrl(primaryCode);
                           const fallbackUrl = row.publicLink || "";
                           const finalUrl = labelUrl || fallbackUrl;
                           const label = finalUrl || "Sin URL";
-                          const fileLabel = row.activationCode?.code || row.userId;
+                          const fileLabel = primaryCode || row.userId;
 
                           return (
                             <QrTools
@@ -1043,7 +1067,7 @@ export default function AdminDashboardPage() {
                           {assigningForCodeId === code.id ? "Asignando..." : "Asignar"}
                         </button>
                         </div>
-                        {isMirrorActivationCode(code) ? (
+                        {code.userId ? (
                           <button
                             type="button"
                             onClick={() => handleReleaseCode(code)}
