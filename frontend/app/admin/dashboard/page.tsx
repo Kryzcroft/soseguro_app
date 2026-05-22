@@ -322,7 +322,24 @@ export default function AdminDashboardPage() {
       }
 
       await assignActivationCode(userId, codeRow.code);
+      // Optimistic local update so UI refleja el cambio inmediatamente
+      setActivationCodes((prev) =>
+        prev.map((c) =>
+          c.id === codeRow.id
+            ? {
+                ...c,
+                userId,
+                userEmail: inventory.find((u) => u.userId === userId)?.email || c.userEmail,
+                isUsed: true,
+                status: "ACTIVE",
+                usedAt: new Date().toISOString(),
+              }
+            : c,
+        ),
+      );
+
       setSuccessMessage(`Etiqueta ${codeRow.code} asignada.`);
+      // Refresh server state to ensure consistency
       await loadDashboard(filter);
       window.setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
@@ -725,7 +742,16 @@ export default function AdminDashboardPage() {
                         )}
                       </td>
                       <td className="px-3 py-3 font-mono text-xs text-slate-700">
-                        {row.activationCode?.code || "Sin codigo"}
+                        <div className="flex items-center gap-2">
+                          <span>{row.activationCode?.code || "Sin codigo"}</span>
+                          {activationCodes.some(
+                            (c) => c.userId === row.userId && c.code !== (row.activationCode?.code ?? ""),
+                          ) ? (
+                            <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">
+                              Espejo
+                            </span>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="px-3 py-3">
                         {(() => {
