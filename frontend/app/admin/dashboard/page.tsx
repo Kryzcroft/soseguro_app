@@ -269,6 +269,8 @@ export default function AdminDashboardPage() {
   const [deletingForUserId, setDeletingForUserId] = useState<string | null>(null);
   const [isGeneratingCodes, setIsGeneratingCodes] = useState(false);
   const [selectedUserForCode, setSelectedUserForCode] = useState<Record<string, string | null>>({});
+  const [assigningForCodeId, setAssigningForCodeId] = useState<string | null>(null);
+  const [assignMessageByCodeId, setAssignMessageByCodeId] = useState<Record<string, { kind: "success" | "error"; text: string } | null>>({});
 
   const orderedActivationCodes = useMemo(() => {
     const filtered = activationCodes.filter((code) => {
@@ -309,8 +311,13 @@ export default function AdminDashboardPage() {
     try {
       const selected = selectedUserForCode[codeRow.id];
       if (!selected) {
-        setErrorMessage("Selecciona un usuario antes de asignar.");
-        window.setTimeout(() => setErrorMessage(null), 2500);
+        setAssignMessageByCodeId((prev) => ({
+          ...prev,
+          [codeRow.id]: { kind: "error", text: "Selecciona un usuario antes de asignar." },
+        }));
+        window.setTimeout(() => {
+          setAssignMessageByCodeId((prev) => ({ ...prev, [codeRow.id]: null }));
+        }, 2500);
         return;
       }
 
@@ -321,31 +328,48 @@ export default function AdminDashboardPage() {
         userId = manual.trim();
       }
 
+      setAssigningForCodeId(codeRow.id);
+      setAssignMessageByCodeId((prev) => ({ ...prev, [codeRow.id]: null }));
+
       await assignActivationCode(userId, codeRow.code);
-      // Optimistic local update so UI refleja el cambio inmediatamente
+
+      // Optimistic local update so UI refleja el cambio inmediatamente.
       setActivationCodes((prev) =>
-        prev.map((c) =>
-          c.id === codeRow.id
+        prev.map((currentCode) =>
+          currentCode.id === codeRow.id
             ? {
-                ...c,
+                ...currentCode,
                 userId,
-                userEmail: inventory.find((u) => u.userId === userId)?.email || c.userEmail,
+                userEmail: inventory.find((u) => u.userId === userId)?.email || currentCode.userEmail,
                 isUsed: true,
                 status: "ACTIVE",
                 usedAt: new Date().toISOString(),
               }
-            : c,
+            : currentCode,
         ),
       );
 
-      setSuccessMessage(`Etiqueta ${codeRow.code} asignada.`);
-      // Refresh server state to ensure consistency
+      setAssignMessageByCodeId((prev) => ({
+        ...prev,
+        [codeRow.id]: { kind: "success", text: `Etiqueta ${codeRow.code} asignada.` },
+      }));
+      window.setTimeout(() => {
+        setAssignMessageByCodeId((prev) => ({ ...prev, [codeRow.id]: null }));
+      }, 2500);
+
+      // Refresh server state to ensure consistency.
       await loadDashboard(filter);
-      window.setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       const message = err instanceof Error ? err.message : "No se pudo asignar etiqueta";
-      setErrorMessage(message);
-      window.setTimeout(() => setErrorMessage(null), 4000);
+      setAssignMessageByCodeId((prev) => ({
+        ...prev,
+        [codeRow.id]: { kind: "error", text: message },
+      }));
+      window.setTimeout(() => {
+        setAssignMessageByCodeId((prev) => ({ ...prev, [codeRow.id]: null }));
+      }, 4000);
+    } finally {
+      setAssigningForCodeId(null);
     }
   };
 
@@ -924,6 +948,7 @@ export default function AdminDashboardPage() {
                         <select
                           value={selectedUserForCode[code.id] ?? ""}
                           onChange={(e) => handleSelectForCode(code.id, e.target.value)}
+                          disabled={assigningForCodeId === code.id}
                           className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs"
                         >
                           <option value="">Seleccionar usuario</option>
@@ -937,11 +962,21 @@ export default function AdminDashboardPage() {
                         <button
                           type="button"
                           onClick={() => handleAssignCode(code)}
+                          disabled={assigningForCodeId === code.id}
                           className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700"
                         >
-                          Asignar
+                          {assigningForCodeId === code.id ? "Asignando..." : "Asignar"}
                         </button>
                       </div>
+                      {assignMessageByCodeId[code.id] ? (
+                        <p
+                          className={`mt-1 text-[11px] font-medium ${
+                            assignMessageByCodeId[code.id]?.kind === "error" ? "text-rose-600" : "text-emerald-700"
+                          }`}
+                        >
+                          {assignMessageByCodeId[code.id]?.text}
+                        </p>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
