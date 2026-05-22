@@ -310,6 +310,14 @@ export default function AdminDashboardPage() {
     return sorted;
   }, [activationCodes, activationSortDirection, activationSortKey, activationStatusFilter]);
 
+  const principalCodeByUserId = useMemo(() => {
+    return new Map(
+      inventory
+        .filter((row) => Boolean(row.activationCode?.code))
+        .map((row) => [row.userId, row.activationCode?.code || ""]),
+    );
+  }, [inventory]);
+
   const handleAssignCode = async (codeRow: { id: string; code: string }) => {
     try {
       const selected = selectedUserForCode[codeRow.id];
@@ -432,6 +440,15 @@ export default function AdminDashboardPage() {
     } finally {
       setReleasingForCodeId(null);
     }
+  };
+
+  const isMirrorActivationCode = (codeRow: { code: string; userId: string | null }) => {
+    if (!codeRow.userId) {
+      return false;
+    }
+
+    const principalCode = principalCodeByUserId.get(codeRow.userId);
+    return Boolean(principalCode && principalCode !== codeRow.code);
   };
 
   const filteredInventory = useMemo(() => {
@@ -1026,7 +1043,7 @@ export default function AdminDashboardPage() {
                           {assigningForCodeId === code.id ? "Asignando..." : "Asignar"}
                         </button>
                         </div>
-                        {code.userId ? (
+                        {isMirrorActivationCode(code) ? (
                           <button
                             type="button"
                             onClick={() => handleReleaseCode(code)}
