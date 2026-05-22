@@ -160,37 +160,81 @@ export class AdminService {
 
       const existing = await tx.activationCode.findFirst({
         where: {
-          codeHash,
+          OR: [
+            { codeHash },
+            { code: normalizedCode },
+          ],
         },
       });
 
       if (!existing) {
-        const created = await tx.activationCode.create({
+        try {
+          const created = await tx.activationCode.create({
+            data: {
+              code: normalizedCode,
+              codeHash,
+              userId: user.id,
+              status: ActivationCodeStatus.ACTIVE,
+              activatedAt: new Date(),
+              isUsed: true,
+              usedAt: new Date(),
+            },
+          });
+
+          return {
+            code: created.code,
+            userId: created.userId,
+            usedAt: created.usedAt,
+            createdAt: created.createdAt,
+          };
+        } catch {
+          // Recupera una colision de unicidad por codigo en asignaciones concurrentes o datos legacy.
+          const recovered = await tx.activationCode.findUnique({
+            where: { code: normalizedCode },
+          });
+
+          if (!recovered) {
+            throw new BadRequestException("No se pudo asignar el codigo. Intenta nuevamente.");
+          }
+
+          const reassigned = await tx.activationCode.update({
+            where: { id: recovered.id },
+            data: {
+              codeHash: recovered.codeHash ?? codeHash,
+              userId: user.id,
+              status: ActivationCodeStatus.ACTIVE,
+              activatedAt: recovered.activatedAt ?? new Date(),
+              isUsed: true,
+              usedAt: recovered.usedAt ?? new Date(),
+            },
+          });
+
+          return {
+            code: reassigned.code,
+            userId: reassigned.userId,
+            usedAt: reassigned.usedAt,
+            createdAt: reassigned.createdAt,
+          };
+        }
+      }
+
+      if (existing.userId === user.id) {
+        const alreadyLinked = await tx.activationCode.update({
+          where: { id: existing.id },
           data: {
-            code: normalizedCode,
-            codeHash,
-            userId: user.id,
+            codeHash: existing.codeHash ?? codeHash,
             status: ActivationCodeStatus.ACTIVE,
-            activatedAt: new Date(),
+            activatedAt: existing.activatedAt ?? new Date(),
             isUsed: true,
-            usedAt: new Date(),
+            usedAt: existing.usedAt ?? new Date(),
           },
         });
 
         return {
-          code: created.code,
-          userId: created.userId,
-          usedAt: created.usedAt,
-          createdAt: created.createdAt,
-        };
-      }
-
-      if (existing.userId === user.id) {
-        return {
-          code: existing.code,
-          userId: existing.userId,
-          usedAt: existing.usedAt,
-          createdAt: existing.createdAt,
+          code: alreadyLinked.code,
+          userId: alreadyLinked.userId,
+          usedAt: alreadyLinked.usedAt,
+          createdAt: alreadyLinked.createdAt,
         };
       }
 
