@@ -8,6 +8,7 @@ import { ApproveUserDto } from "./dto/approve-user.dto";
 import { DeleteUserDto } from "./dto/delete-user.dto";
 import { AdminResetPasswordDto } from "../auth/dto/admin-reset-password.dto";
 import { GenerateActivationCodesDto } from "./dto/generate-activation-codes.dto";
+import { ReleaseActivationCodeDto } from "./dto/release-activation-code.dto";
 import { AdminService, ProfileStatusFilter } from "./admin.service";
 
 @Controller("admin")
@@ -34,6 +35,11 @@ export class AdminController {
   @Post("dashboard/assign-code")
   assignCode(@Body() dto: AssignActivationCodeDto) {
     return this.adminService.assignCodeAtomically(dto.userId, dto.code);
+  }
+
+  @Post("dashboard/release-code")
+  releaseCode(@Body() dto: ReleaseActivationCodeDto) {
+    return this.adminService.releaseActivationCode(dto.code);
   }
 
   @Post("dashboard/generate-codes")

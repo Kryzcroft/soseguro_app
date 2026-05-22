@@ -105,6 +105,36 @@ export async function assignActivationCode(userId: string, code: string): Promis
   }
 }
 
+export async function releaseActivationCode(code: string): Promise<{ released: boolean; code: string; previousUserId: string | null }> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/admin/dashboard/release-code`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ code: code.trim().toUpperCase() }),
+  });
+
+  if (response.status === 403) {
+    throw new Error("Acceso denegado: esta vista solo esta habilitada para Cristian.");
+  }
+
+  if (!response.ok) {
+    const fallback = "No se pudo liberar la etiqueta.";
+    let message = fallback;
+
+    try {
+      const body = await response.json();
+      message = body.message || fallback;
+    } catch {
+      message = fallback;
+    }
+
+    throw new Error(Array.isArray(message) ? message.join(", ") : message);
+  }
+
+  return response.json() as Promise<{ released: boolean; code: string; previousUserId: string | null }>;
+}
+
 export async function generateActivationCodes(quantity: number): Promise<{ requested: number; generated: number; codes: string[] }> {
   const response = await fetchWithAuth(`${API_BASE_URL}/admin/dashboard/generate-codes`, {
     method: "POST",

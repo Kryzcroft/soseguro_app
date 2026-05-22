@@ -10,6 +10,7 @@ import {
   fetchAdminDashboard,
   generateActivationCodes,
   assignActivationCode,
+  releaseActivationCode,
   ProfileStatus,
 } from "../../../lib/admin-api";
 import { clearAuthToken, getAuthToken, UnauthorizedError } from "../../../lib/auth-client";
@@ -271,6 +272,8 @@ export default function AdminDashboardPage() {
   const [selectedUserForCode, setSelectedUserForCode] = useState<Record<string, string | null>>({});
   const [assigningForCodeId, setAssigningForCodeId] = useState<string | null>(null);
   const [assignMessageByCodeId, setAssignMessageByCodeId] = useState<Record<string, { kind: "success" | "error"; text: string } | null>>({});
+  const [releasingForCodeId, setReleasingForCodeId] = useState<string | null>(null);
+  const [releaseMessageByCodeId, setReleaseMessageByCodeId] = useState<Record<string, { kind: "success" | "error"; text: string } | null>>({});
 
   const orderedActivationCodes = useMemo(() => {
     const filtered = activationCodes.filter((code) => {
@@ -375,6 +378,60 @@ export default function AdminDashboardPage() {
 
   const handleSelectForCode = (codeId: string, value: string) => {
     setSelectedUserForCode((prev) => ({ ...prev, [codeId]: value }));
+  };
+
+  const handleReleaseCode = async (codeRow: { id: string; code: string }) => {
+    const confirmed = window.confirm(
+      `Vas a liberar la etiqueta ${codeRow.code}. Se desvinculara del usuario, pero el perfil no se borrara. Deseas continuar?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setReleasingForCodeId(codeRow.id);
+      setReleaseMessageByCodeId((prev) => ({ ...prev, [codeRow.id]: null }));
+
+      await releaseActivationCode(codeRow.code);
+
+      setActivationCodes((prev) =>
+        prev.map((currentCode) =>
+          currentCode.id === codeRow.id
+            ? {
+                ...currentCode,
+                userId: null,
+                userEmail: null,
+                isUsed: false,
+                status: "AVAILABLE",
+                usedAt: null,
+                activatedAt: null,
+              }
+            : currentCode,
+        ),
+      );
+
+      setReleaseMessageByCodeId((prev) => ({
+        ...prev,
+        [codeRow.id]: { kind: "success", text: `Etiqueta ${codeRow.code} liberada.` },
+      }));
+      window.setTimeout(() => {
+        setReleaseMessageByCodeId((prev) => ({ ...prev, [codeRow.id]: null }));
+      }, 2500);
+
+      await loadDashboard(filter);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo liberar la etiqueta";
+      setReleaseMessageByCodeId((prev) => ({
+        ...prev,
+        [codeRow.id]: { kind: "error", text: message },
+      }));
+      window.setTimeout(() => {
+        setReleaseMessageByCodeId((prev) => ({ ...prev, [codeRow.id]: null }));
+      }, 4000);
+    } finally {
+      setReleasingForCodeId(null);
+    }
   };
 
   const filteredInventory = useMemo(() => {
@@ -944,7 +1001,8 @@ export default function AdminDashboardPage() {
                       )}
                     </td>
                     <td className="px-3 py-2 text-xs text-slate-700">
-                      <div className="flex items-center gap-2">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
                         <select
                           value={selectedUserForCode[code.id] ?? ""}
                           onChange={(e) => handleSelectForCode(code.id, e.target.value)}
@@ -967,6 +1025,17 @@ export default function AdminDashboardPage() {
                         >
                           {assigningForCodeId === code.id ? "Asignando..." : "Asignar"}
                         </button>
+                        </div>
+                        {code.userId ? (
+                          <button
+                            type="button"
+                            onClick={() => handleReleaseCode(code)}
+                            disabled={releasingForCodeId === code.id}
+                            className="rounded-md border border-rose-300 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 disabled:opacity-50"
+                          >
+                            {releasingForCodeId === code.id ? "Liberando..." : "Liberar"}
+                          </button>
+                        ) : null}
                       </div>
                       {assignMessageByCodeId[code.id] ? (
                         <p
@@ -975,6 +1044,15 @@ export default function AdminDashboardPage() {
                           }`}
                         >
                           {assignMessageByCodeId[code.id]?.text}
+                        </p>
+                      ) : null}
+                      {releaseMessageByCodeId[code.id] ? (
+                        <p
+                          className={`mt-1 text-[11px] font-medium ${
+                            releaseMessageByCodeId[code.id]?.kind === "error" ? "text-rose-600" : "text-emerald-700"
+                          }`}
+                        >
+                          {releaseMessageByCodeId[code.id]?.text}
                         </p>
                       ) : null}
                     </td>

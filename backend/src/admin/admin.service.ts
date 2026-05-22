@@ -215,6 +215,48 @@ export class AdminService {
     });
   }
 
+  async releaseActivationCode(code: string) {
+    const normalizedCode = normalizeActivationCode(code);
+
+    if (!normalizedCode) {
+      throw new BadRequestException("El codigo no puede estar vacio.");
+    }
+
+    const existing = await this.prisma.activationCode.findUnique({
+      where: { code: normalizedCode },
+      select: {
+        id: true,
+        code: true,
+        userId: true,
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException("Etiqueta no encontrada.");
+    }
+
+    const updated = await this.prisma.activationCode.update({
+      where: { id: existing.id },
+      data: {
+        userId: null,
+        status: ActivationCodeStatus.AVAILABLE,
+        activatedAt: null,
+        isUsed: false,
+        usedAt: null,
+      },
+      select: {
+        code: true,
+        userId: true,
+      },
+    });
+
+    return {
+      released: true,
+      code: updated.code,
+      previousUserId: existing.userId,
+    };
+  }
+
   async generateActivationCodes(quantity: number) {
     if (!Number.isInteger(quantity) || quantity <= 0) {
       throw new BadRequestException("La cantidad debe ser un entero positivo.");
