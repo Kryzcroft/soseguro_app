@@ -501,11 +501,6 @@ export default function ActivarPage() {
           <p className="mt-1 text-center text-sm text-slate-600">{stepTitle}</p>
           {stepSubtitle ? <p className="mt-1 text-center text-sm text-slate-600">{stepSubtitle}</p> : null}
 
-          {state.step === 1 && gateStatus === "validated" && (
-            <p className="mt-3 text-center text-sm text-slate-600">
-              Ya validado el código de activación, tienes que ingresar un correo electrónico y crear una contraseña de mínimo 8 caracteres para acceder a tu perfil.
-            </p>
-          )}
         </header>
 
         {state.verifiedToken ? (

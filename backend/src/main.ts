@@ -4,6 +4,7 @@ import { NestFactory } from "@nestjs/core";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import { join } from "path";
 import * as express from "express";
+import { NextFunction, Request, Response } from "express";
 import { AppModule } from "./app.module";
 
 async function bootstrap() {
@@ -23,7 +24,7 @@ async function bootstrap() {
   app.use(express.urlencoded({ limit: "5mb", extended: true }));
 
   // Request timeout (30 seconds)
-  app.use((req, res, next) => {
+  app.use((req: Request, res: Response, next: NextFunction) => {
     req.setTimeout(30000);
     res.setTimeout(30000);
     next();

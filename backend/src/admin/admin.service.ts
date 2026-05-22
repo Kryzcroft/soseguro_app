@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -184,10 +183,6 @@ export class AdminService {
           usedAt: created.usedAt,
           createdAt: created.createdAt,
         };
-      }
-
-      if (existing.userId && existing.userId !== user.id) {
-        throw new ConflictException("El codigo ya esta asignado a otro usuario.");
       }
 
       if (existing.userId === user.id) {
