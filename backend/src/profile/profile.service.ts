@@ -27,6 +27,11 @@ type DashboardAccount = {
     status: ActivationCodeStatus;
     activatedAt: Date | null;
   } | null;
+  activeActivationCodes: Array<{
+    code: string;
+    status: ActivationCodeStatus;
+    activatedAt: Date | null;
+  }>;
   medicalProfile: DashboardMedicalProfile | null;
 };
 
@@ -53,7 +58,6 @@ export class ProfileService {
             status: ActivationCodeStatus.ACTIVE,
           },
           orderBy: [{ activatedAt: "desc" }, { createdAt: "desc" }],
-          take: 1,
           select: {
             code: true,
             status: true,
@@ -96,6 +100,11 @@ export class ProfileService {
             activatedAt: activationCodes[0].activatedAt,
           }
         : null,
+      activeActivationCodes: activationCodes.map((activationCode) => ({
+        code: activationCode.code.trim().toUpperCase(),
+        status: activationCode.status,
+        activatedAt: activationCode.activatedAt,
+      })),
       medicalProfile,
     };
   }

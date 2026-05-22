@@ -282,11 +282,17 @@ export default function ActivarPage() {
     };
   }, [isBootstrapped, isHydratingState, state.step, state.userId, state.activateValues.activationCode]);
 
-  const stepLabel = useMemo(() => {
+  const stepTitle = useMemo(() => {
     if (state.step === 1) return "Paso 1: Debes Ingresar el Código que el equipo de Activación te proporcionó.";
     if (state.step === 2) return "Paso 2: Datos basicos";
     return state.requiresEmailVerification ? "Paso 3: Verificacion por email" : "Paso 3: Pendiente de aprobacion";
   }, [state.step, state.requiresEmailVerification]);
+
+  const stepSubtitle = useMemo(() => {
+    if (state.step === 1)
+      return "Posteriormente agrega tu correo electronico y crea una contraseña de minimo 8 caracteres para comenzar a crear tu Perfil.";
+    return "";
+  }, [state.step]);
 
   const handleValidateCode = async () => {
     const normalized = normalizeActivationCode(gateCodeInput);
@@ -492,7 +498,8 @@ export default function ActivarPage() {
             <img src="/sos-logo-light.png" alt="Logo SOSeguro" className="h-auto w-[260px] md:w-[320px]" />
           </div>
           <h1 className="text-center text-2xl font-semibold text-slate-900">Activar cuenta SOSeguro</h1>
-          <p className="mt-1 text-center text-sm text-slate-600">{stepLabel}</p>
+          <p className="mt-1 text-center text-sm text-slate-600">{stepTitle}</p>
+          {stepSubtitle ? <p className="mt-1 text-center text-sm text-slate-600">{stepSubtitle}</p> : null}
 
           {state.step === 1 && gateStatus === "validated" && (
             <p className="mt-3 text-center text-sm text-slate-600">

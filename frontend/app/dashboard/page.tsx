@@ -132,6 +132,8 @@ export default function DashboardPage() {
     return `${baseUrl}/a/${encodeURIComponent(code)}`;
   }, [account?.linkedActivationCode?.code]);
 
+  const activeActivationCodes = account?.activeActivationCodes ?? [];
+
   const qrTargetUrl = labelAccessUrl || profileUrl;
 
   const requiresPrivacyConsent = Boolean(
@@ -358,14 +360,27 @@ export default function DashboardPage() {
           </section>
 
           <section className="rounded-[10px] border border-soseguro-navy/10 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase text-slate-500">Etiqueta vinculada</p>
-            {account.linkedActivationCode ? (
-              <>
-                <p className="mt-2 text-lg font-bold text-soseguro-navy">{account.linkedActivationCode.code}</p>
-                <p className="mt-1 text-sm text-slate-600">
-                  Estado: {account.linkedActivationCode.status} · Activada: {account.linkedActivationCode.activatedAt ? new Date(account.linkedActivationCode.activatedAt).toLocaleString("es-MX") : "N/A"}
-                </p>
-              </>
+            <p className="text-sm font-semibold uppercase text-slate-500">Etiquetas vinculadas</p>
+            {activeActivationCodes.length > 0 ? (
+              <div className="mt-3 space-y-3">
+                {activeActivationCodes.map((code, index) => (
+                  <div key={code.code} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-base font-bold text-soseguro-navy">
+                        {code.code}
+                        {index === 0 ? <span className="ml-2 text-xs font-semibold uppercase text-emerald-700">Principal</span> : null}
+                      </p>
+                      <span className="rounded-full bg-soseguro-navy/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-soseguro-navy">
+                        {code.status}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Activada: {code.activatedAt ? new Date(code.activatedAt).toLocaleString("es-MX") : "N/A"}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">Esta etiqueta abre el mismo perfil publico que las demas vinculadas.</p>
+                  </div>
+                ))}
+              </div>
             ) : (
               <p className="mt-2 text-sm text-slate-600">No hay etiqueta activa vinculada a tu cuenta.</p>
             )}

@@ -18,6 +18,11 @@ export type DashboardAccount = {
     status: "AVAILABLE" | "ACTIVE" | "REVOKED";
     activatedAt: string | null;
   } | null;
+  activeActivationCodes: Array<{
+    code: string;
+    status: "AVAILABLE" | "ACTIVE" | "REVOKED";
+    activatedAt: string | null;
+  }>;
   medicalProfile: {
     id: string;
     userId: string;
