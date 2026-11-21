@@ -191,19 +191,49 @@ function QrTools({ targetUrl, label, fileLabel }: QrToolsProps) {
   }, [disabled, finalUrl]);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Acceso QR/NFC</p>
       <p className="break-all rounded-md bg-slate-50 px-2 py-1 text-[11px] font-mono text-slate-700">{label}</p>
-      <div className="rounded-md border border-slate-200 bg-slate-50 p-2">
-        <QRCodeCanvas
-          ref={(node) => {
-            canvasRef.current = node;
-          }}
-          value={finalUrl || "about:blank"}
-          size={84}
-          level="M"
-          includeMargin
-        />
+      <div className="flex items-start gap-2">
+        <div className="shrink-0 rounded-md border border-slate-200 bg-slate-50 p-1">
+          <QRCodeCanvas
+            ref={(node) => {
+              canvasRef.current = node;
+            }}
+            value={finalUrl || "about:blank"}
+            size={64}
+            level="M"
+            includeMargin
+          />
+        </div>
+        <div className="min-w-0 flex-1 space-y-1">
+          <button
+            type="button"
+            onClick={downloadQr}
+            disabled={disabled}
+            className="w-full whitespace-nowrap rounded-md border px-2 py-1 text-[11px] font-semibold text-slate-700 disabled:opacity-50"
+          >
+            Descargar QR
+          </button>
+
+          <button
+            type="button"
+            onClick={downloadPrintableLabel}
+            disabled={disabled}
+            className="w-full whitespace-nowrap rounded-md border border-slate-900 px-2 py-1 text-[11px] font-semibold text-slate-900 disabled:opacity-50"
+          >
+            Descargar Etiqueta
+          </button>
+
+          <button
+            type="button"
+            onClick={copyForNfc}
+            disabled={disabled}
+            className="w-full whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-50"
+          >
+            Copiar Link NFC
+          </button>
+        </div>
       </div>
 
       <div className="hidden">
@@ -218,33 +248,6 @@ function QrTools({ targetUrl, label, fileLabel }: QrToolsProps) {
         />
       </div>
 
-      <button
-        type="button"
-        onClick={downloadQr}
-        disabled={disabled}
-        className="w-full rounded-md border px-2 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50"
-      >
-        Descargar QR
-      </button>
-
-      <button
-        type="button"
-        onClick={downloadPrintableLabel}
-        disabled={disabled}
-        className="w-full rounded-md border border-slate-900 px-2 py-1 text-xs font-semibold text-slate-900 disabled:opacity-50"
-      >
-        Descargar Etiqueta
-      </button>
-
-      <button
-        type="button"
-        onClick={copyForNfc}
-        disabled={disabled}
-        className="w-full rounded-md bg-slate-900 px-2 py-1 text-xs font-semibold text-white disabled:opacity-50"
-      >
-        Copiar Link NFC
-      </button>
-
       {copyMessage ? <p className="text-[11px] text-emerald-700">{copyMessage}</p> : null}
     </div>
   );
@@ -255,6 +258,9 @@ export default function AdminDashboardPage() {
   const [filter, setFilter] = useState<FilterOption>("ALL");
   const [accountStatusFilter, setAccountStatusFilter] = useState<AccountStatusFilter>("ALL");
   const [searchTerm, setSearchTerm] = useState("");
+  // Texto que el usuario escribe; searchTerm se actualiza con debounce
+  // para no recargar el inventario con cada tecla.
+  const [searchInput, setSearchInput] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [inventory, setInventory] = useState<Awaited<ReturnType<typeof fetchAdminDashboard>>["inventory"]>([]);
@@ -558,6 +564,13 @@ export default function AdminDashboardPage() {
     loadDashboard(filter);
   }, [filter, loadDashboard, router, searchTerm]);
 
+  // Espera 400 ms sin escribir antes de aplicar la búsqueda de usuarios,
+  // para no disparar una recarga completa ("Cargando inventario...") con cada tecla.
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSearchTerm(searchInput), 400);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
+
   const handleGenerateCodes = async () => {
     const raw = window.prompt("Cuantos codigos nuevos necesitas? (1-500)", "50");
     if (!raw) {
@@ -765,10 +778,10 @@ export default function AdminDashboardPage() {
             <h2 className="text-lg font-semibold text-slate-900">Inventario de usuarios</h2>
             <div className="flex flex-wrap items-center gap-2">
               <input
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="Buscar por email o codigo de activacion"
-                className="w-72 rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="w-80 max-w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
               />
               <label className="text-sm font-medium text-slate-700">Estatus de perfil</label>
               <select
@@ -802,16 +815,20 @@ export default function AdminDashboardPage() {
           {isLoading ? (
             <p className="mt-4 text-sm text-slate-600">Cargando inventario...</p>
           ) : (
-            <div className="mt-4 overflow-x-auto">
+            <>
+              <p className="mt-4 text-sm text-slate-600">
+                Mostrando {filteredInventory.length} de {inventory.length} usuarios.
+              </p>
+              <div className="mt-2 overflow-x-auto">
               <table className="min-w-full border-collapse text-sm">
                 <thead>
                   <tr className="border-b text-left text-slate-600">
-                    <th className="px-3 py-2">Usuario</th>
-                    <th className="px-3 py-2">Estatus perfil</th>
-                    <th className="px-3 py-2">Estatus cuenta</th>
-                    <th className="px-3 py-2">Codigo</th>
-                    <th className="px-3 py-2">Acceso</th>
-                    <th className="px-3 py-2">Eliminar</th>
+                    <th className="whitespace-nowrap px-3 py-2">Usuario</th>
+                    <th className="whitespace-nowrap px-3 py-2">Estatus perfil</th>
+                    <th className="whitespace-nowrap px-3 py-2">Estatus cuenta</th>
+                    <th className="whitespace-nowrap px-3 py-2">Codigo</th>
+                    <th className="whitespace-nowrap px-3 py-2">Acceso</th>
+                    <th className="whitespace-nowrap px-3 py-2">Eliminar</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -844,7 +861,7 @@ export default function AdminDashboardPage() {
                               type="button"
                               onClick={() => handleResetPassword(row.userId, row.email)}
                               disabled={resettingPasswordForUserId === row.userId}
-                              className="block rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50"
+                              className="block whitespace-nowrap rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50"
                             >
                               {resettingPasswordForUserId === row.userId ? "Generando..." : "Reset contraseña"}
                             </button>
@@ -866,7 +883,7 @@ export default function AdminDashboardPage() {
                               type="button"
                               onClick={() => handleResetPassword(row.userId, row.email)}
                               disabled={resettingPasswordForUserId === row.userId}
-                              className="block rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50"
+                              className="block whitespace-nowrap rounded-md border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50"
                             >
                               {resettingPasswordForUserId === row.userId ? "Generando..." : "Reset contraseña"}
                             </button>
@@ -938,6 +955,7 @@ export default function AdminDashboardPage() {
                 <p className="px-3 py-4 text-sm text-slate-500">No hay usuarios con los filtros actuales.</p>
               ) : null}
             </div>
+            </>
           )}
         </section>
 
@@ -996,19 +1014,19 @@ export default function AdminDashboardPage() {
           </p>
 
           <div className="mt-2 max-h-[32rem] overflow-auto rounded-lg border border-slate-200">
-            <table className="w-full min-w-[960px] table-fixed border-collapse text-sm">
+            <table className="w-full min-w-[1180px] table-fixed border-separate border-spacing-0 text-sm">
               <colgroup>
-                <col className="w-[15%]" />
-                <col className="w-[17%]" />
-                <col className="w-[10%]" />
+                <col className="w-[22%]" />
+                <col className="w-[14%]" />
+                <col className="w-[9%]" />
+                <col className="w-[11%]" />
+                <col className="w-[11%]" />
                 <col className="w-[12%]" />
-                <col className="w-[12%]" />
-                <col className="w-[16%]" />
-                <col className="w-[18%]" />
+                <col className="w-[21%]" />
               </colgroup>
               <thead>
-                <tr className="border-b text-left text-slate-600">
-                  <th className="sticky top-0 z-10 bg-slate-50 px-3 py-2">
+                <tr className="text-left text-slate-600">
+                  <th className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-2">
                     <button
                       type="button"
                       onClick={() => toggleActivationSort("code")}
@@ -1017,7 +1035,7 @@ export default function AdminDashboardPage() {
                       Codigo <span className="text-xs">{sortIndicatorFor("code")}</span>
                     </button>
                   </th>
-                  <th className="sticky top-0 z-10 bg-slate-50 px-3 py-2">
+                  <th className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-2">
                     <button
                       type="button"
                       onClick={() => toggleActivationSort("userEmail")}
@@ -1026,7 +1044,7 @@ export default function AdminDashboardPage() {
                       Asignado a <span className="text-xs">{sortIndicatorFor("userEmail")}</span>
                     </button>
                   </th>
-                  <th className="sticky top-0 z-10 bg-slate-50 px-3 py-2">
+                  <th className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-2">
                     <button
                       type="button"
                       onClick={() => toggleActivationSort("isUsed")}
@@ -1035,7 +1053,7 @@ export default function AdminDashboardPage() {
                       Estatus <span className="text-xs">{sortIndicatorFor("isUsed")}</span>
                     </button>
                   </th>
-                  <th className="sticky top-0 z-10 bg-slate-50 px-3 py-2">
+                  <th className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-2">
                     <button
                       type="button"
                       onClick={() => toggleActivationSort("createdAt")}
@@ -1044,7 +1062,7 @@ export default function AdminDashboardPage() {
                       Creado <span className="text-xs">{sortIndicatorFor("createdAt")}</span>
                     </button>
                   </th>
-                  <th className="sticky top-0 z-10 bg-slate-50 px-3 py-2">
+                  <th className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-2">
                     <button
                       type="button"
                       onClick={() => toggleActivationSort("usedAt")}
@@ -1053,31 +1071,35 @@ export default function AdminDashboardPage() {
                       Usado <span className="text-xs">{sortIndicatorFor("usedAt")}</span>
                     </button>
                   </th>
-                  <th className="sticky top-0 z-10 bg-slate-50 px-3 py-2">URL completa QR/NFC</th>
-                  <th className="sticky top-0 z-10 bg-slate-50 px-3 py-2">Acción</th>
+                  <th className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-2">URL completa QR/NFC</th>
+                  <th className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 px-3 py-2">Acción</th>
                 </tr>
               </thead>
               <tbody>
                 {pagedActivationCodes.map((code) => (
-                  <tr key={code.id} className="border-b">
-                    <td className="px-3 py-2 font-mono text-xs text-slate-700">{code.code}</td>
-                    <td className="break-words px-3 py-2 text-xs text-slate-700">{code.userEmail || "Sin asignar"}</td>
-                    <td className="px-3 py-2">
+                  <tr key={code.id}>
+                    <td className="border-b border-slate-200 px-3 py-2 font-mono text-xs text-slate-700">
+                      <span className="block truncate" title={code.code}>
+                        {code.code}
+                      </span>
+                    </td>
+                    <td className="break-words border-b border-slate-200 px-3 py-2 text-xs text-slate-700">{code.userEmail || "Sin asignar"}</td>
+                    <td className="border-b border-slate-200 px-3 py-2">
                       <span
-                        className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                        className={`whitespace-nowrap rounded-full px-2 py-1 text-xs font-semibold ${
                           code.isUsed ? "bg-indigo-100 text-indigo-700" : "bg-emerald-100 text-emerald-700"
                         }`}
                       >
                         {code.isUsed ? "Usado" : "Disponible"}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-xs text-slate-700">
+                    <td className="whitespace-nowrap border-b border-slate-200 px-3 py-2 text-xs text-slate-700">
                       {new Date(code.createdAt).toLocaleString("es-MX")}
                     </td>
-                    <td className="px-3 py-2 text-xs text-slate-700">
+                    <td className="whitespace-nowrap border-b border-slate-200 px-3 py-2 text-xs text-slate-700">
                       {code.usedAt ? new Date(code.usedAt).toLocaleString("es-MX") : "-"}
                     </td>
-                    <td className="px-3 py-2 text-xs text-slate-700">
+                    <td className="border-b border-slate-200 px-3 py-2 text-xs text-slate-700">
                       {buildLabelUrl(code.code) ? (
                         <div className="space-y-2">
                           <a
@@ -1101,9 +1123,9 @@ export default function AdminDashboardPage() {
                         "No disponible"
                       )}
                     </td>
-                    <td className="px-3 py-2 text-xs text-slate-700">
+                    <td className="border-b border-slate-200 px-3 py-2 text-xs text-slate-700">
                       <div className="space-y-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-col gap-2">
                         <select
                           value={selectedUserForCode[code.id] ?? ""}
                           onChange={(e) => handleSelectForCode(code.id, e.target.value)}
@@ -1122,7 +1144,7 @@ export default function AdminDashboardPage() {
                           type="button"
                           onClick={() => handleAssignCode(code)}
                           disabled={assigningForCodeId === code.id}
-                          className="shrink-0 rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700"
+                          className="w-full rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700"
                         >
                           {assigningForCodeId === code.id ? "Asignando..." : "Asignar"}
                         </button>
@@ -1132,7 +1154,7 @@ export default function AdminDashboardPage() {
                             type="button"
                             onClick={() => handleReleaseCode(code)}
                             disabled={releasingForCodeId === code.id}
-                            className="rounded-md border border-rose-300 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 disabled:opacity-50"
+                            className="w-full rounded-md border border-rose-300 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 disabled:opacity-50"
                           >
                             {releasingForCodeId === code.id ? "Liberando..." : "Liberar"}
                           </button>
