@@ -264,6 +264,9 @@ export default function AdminDashboardPage() {
   const [activationStatusFilter, setActivationStatusFilter] = useState<ActivationStatusFilter>("ALL");
   const [activationSortKey, setActivationSortKey] = useState<ActivationSortKey>("createdAt");
   const [activationSortDirection, setActivationSortDirection] = useState<"asc" | "desc">("desc");
+  const [activationSearchTerm, setActivationSearchTerm] = useState("");
+  const [activationPage, setActivationPage] = useState(1);
+  const ACTIVATION_CODES_PER_PAGE = 20;
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [approvingForUserId, setApprovingForUserId] = useState<string | null>(null);
   const [resettingPasswordForUserId, setResettingPasswordForUserId] = useState<string | null>(null);
@@ -276,10 +279,20 @@ export default function AdminDashboardPage() {
   const [releaseMessageByCodeId, setReleaseMessageByCodeId] = useState<Record<string, { kind: "success" | "error"; text: string } | null>>({});
 
   const orderedActivationCodes = useMemo(() => {
+    const normalizedSearch = activationSearchTerm.trim().toLowerCase();
+
     const filtered = activationCodes.filter((code) => {
-      if (activationStatusFilter === "ALL") return true;
-      if (activationStatusFilter === "USED") return code.isUsed;
-      return !code.isUsed;
+      if (activationStatusFilter === "USED" && !code.isUsed) return false;
+      if (activationStatusFilter === "AVAILABLE" && code.isUsed) return false;
+
+      if (normalizedSearch) {
+        const haystack = [code.code, code.userEmail ?? "", buildLabelUrl(code.code)]
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(normalizedSearch)) return false;
+      }
+
+      return true;
     });
 
     const sorted = [...filtered].sort((left, right) => {
@@ -308,7 +321,22 @@ export default function AdminDashboardPage() {
     });
 
     return sorted;
-  }, [activationCodes, activationSortDirection, activationSortKey, activationStatusFilter]);
+  }, [activationCodes, activationSortDirection, activationSortKey, activationStatusFilter, activationSearchTerm]);
+
+  const activationTotalPages = Math.max(
+    1,
+    Math.ceil(orderedActivationCodes.length / ACTIVATION_CODES_PER_PAGE),
+  );
+  const activationCurrentPage = Math.min(activationPage, activationTotalPages);
+  const pagedActivationCodes = useMemo(() => {
+    const start = (activationCurrentPage - 1) * ACTIVATION_CODES_PER_PAGE;
+    return orderedActivationCodes.slice(start, start + ACTIVATION_CODES_PER_PAGE);
+  }, [orderedActivationCodes, activationCurrentPage]);
+
+  // Al cambiar el buscador o el filtro, volver a la primera pagina.
+  useEffect(() => {
+    setActivationPage(1);
+  }, [activationSearchTerm, activationStatusFilter]);
 
   const activationCodesByUserId = useMemo(() => {
     const grouped = new Map<string, typeof activationCodes>();
@@ -917,6 +945,12 @@ export default function AdminDashboardPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold text-slate-900">Codigos de activacion generados</h2>
             <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={activationSearchTerm}
+                onChange={(event) => setActivationSearchTerm(event.target.value)}
+                placeholder="Buscar por código, usuario o URL"
+                className="w-72 rounded-md border border-slate-300 px-3 py-2 text-sm"
+              />
               <label className="text-sm font-medium text-slate-700">Filtro</label>
               <select
                 value={activationStatusFilter}
@@ -953,11 +987,28 @@ export default function AdminDashboardPage() {
             </div>
           ) : null}
 
-          <div className="mt-4 overflow-x-auto">
-            <table className="min-w-full border-collapse text-sm">
+          <p className="mt-4 text-sm text-slate-600">
+            Mostrando {pagedActivationCodes.length} de {orderedActivationCodes.length} códigos
+            {orderedActivationCodes.length !== activationCodes.length
+              ? ` (${activationCodes.length} en total)`
+              : ""}
+            .
+          </p>
+
+          <div className="mt-2 max-h-[32rem] overflow-auto rounded-lg border border-slate-200">
+            <table className="w-full min-w-[960px] table-fixed border-collapse text-sm">
+              <colgroup>
+                <col className="w-[15%]" />
+                <col className="w-[17%]" />
+                <col className="w-[10%]" />
+                <col className="w-[12%]" />
+                <col className="w-[12%]" />
+                <col className="w-[16%]" />
+                <col className="w-[18%]" />
+              </colgroup>
               <thead>
                 <tr className="border-b text-left text-slate-600">
-                  <th className="px-3 py-2">
+                  <th className="sticky top-0 z-10 bg-slate-50 px-3 py-2">
                     <button
                       type="button"
                       onClick={() => toggleActivationSort("code")}
@@ -966,7 +1017,7 @@ export default function AdminDashboardPage() {
                       Codigo <span className="text-xs">{sortIndicatorFor("code")}</span>
                     </button>
                   </th>
-                  <th className="px-3 py-2">
+                  <th className="sticky top-0 z-10 bg-slate-50 px-3 py-2">
                     <button
                       type="button"
                       onClick={() => toggleActivationSort("userEmail")}
@@ -975,7 +1026,7 @@ export default function AdminDashboardPage() {
                       Asignado a <span className="text-xs">{sortIndicatorFor("userEmail")}</span>
                     </button>
                   </th>
-                  <th className="px-3 py-2">
+                  <th className="sticky top-0 z-10 bg-slate-50 px-3 py-2">
                     <button
                       type="button"
                       onClick={() => toggleActivationSort("isUsed")}
@@ -984,7 +1035,7 @@ export default function AdminDashboardPage() {
                       Estatus <span className="text-xs">{sortIndicatorFor("isUsed")}</span>
                     </button>
                   </th>
-                  <th className="px-3 py-2">
+                  <th className="sticky top-0 z-10 bg-slate-50 px-3 py-2">
                     <button
                       type="button"
                       onClick={() => toggleActivationSort("createdAt")}
@@ -993,7 +1044,7 @@ export default function AdminDashboardPage() {
                       Creado <span className="text-xs">{sortIndicatorFor("createdAt")}</span>
                     </button>
                   </th>
-                  <th className="px-3 py-2">
+                  <th className="sticky top-0 z-10 bg-slate-50 px-3 py-2">
                     <button
                       type="button"
                       onClick={() => toggleActivationSort("usedAt")}
@@ -1002,16 +1053,24 @@ export default function AdminDashboardPage() {
                       Usado <span className="text-xs">{sortIndicatorFor("usedAt")}</span>
                     </button>
                   </th>
-                  <th className="px-3 py-2">URL completa QR/NFC</th>
-                  <th className="px-3 py-2">Acción</th>
+                  <th className="sticky top-0 z-10 bg-slate-50 px-3 py-2">URL completa QR/NFC</th>
+                  <th className="sticky top-0 z-10 bg-slate-50 px-3 py-2">Acción</th>
                 </tr>
               </thead>
               <tbody>
-                {orderedActivationCodes.map((code) => (
+                {pagedActivationCodes.map((code) => (
                   <tr key={code.id} className="border-b">
                     <td className="px-3 py-2 font-mono text-xs text-slate-700">{code.code}</td>
-                    <td className="px-3 py-2 text-xs text-slate-700">{code.userEmail || "Sin asignar"}</td>
-                    <td className="px-3 py-2 text-xs text-slate-700">{code.isUsed ? "Usado" : "Disponible"}</td>
+                    <td className="break-words px-3 py-2 text-xs text-slate-700">{code.userEmail || "Sin asignar"}</td>
+                    <td className="px-3 py-2">
+                      <span
+                        className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                          code.isUsed ? "bg-indigo-100 text-indigo-700" : "bg-emerald-100 text-emerald-700"
+                        }`}
+                      >
+                        {code.isUsed ? "Usado" : "Disponible"}
+                      </span>
+                    </td>
                     <td className="px-3 py-2 text-xs text-slate-700">
                       {new Date(code.createdAt).toLocaleString("es-MX")}
                     </td>
@@ -1025,7 +1084,8 @@ export default function AdminDashboardPage() {
                             href={buildLabelUrl(code.code)}
                             target="_blank"
                             rel="noreferrer"
-                            className="block break-all font-mono text-blue-700 underline"
+                            title={buildLabelUrl(code.code)}
+                            className="block truncate font-mono text-blue-700 underline"
                           >
                             {buildLabelUrl(code.code)}
                           </a>
@@ -1048,7 +1108,7 @@ export default function AdminDashboardPage() {
                           value={selectedUserForCode[code.id] ?? ""}
                           onChange={(e) => handleSelectForCode(code.id, e.target.value)}
                           disabled={assigningForCodeId === code.id}
-                          className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs"
+                          className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs"
                         >
                           <option value="">Seleccionar usuario</option>
                           {inventory.map((user) => (
@@ -1062,7 +1122,7 @@ export default function AdminDashboardPage() {
                           type="button"
                           onClick={() => handleAssignCode(code)}
                           disabled={assigningForCodeId === code.id}
-                          className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700"
+                          className="shrink-0 rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700"
                         >
                           {assigningForCodeId === code.id ? "Asignando..." : "Asignar"}
                         </button>
@@ -1101,6 +1161,33 @@ export default function AdminDashboardPage() {
                 ))}
               </tbody>
             </table>
+            {!pagedActivationCodes.length ? (
+              <p className="px-3 py-4 text-sm text-slate-500">No hay códigos con los filtros actuales.</p>
+            ) : null}
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-slate-500">
+              Página {activationCurrentPage} de {activationTotalPages}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setActivationPage((current) => Math.max(1, current - 1))}
+                disabled={activationCurrentPage <= 1}
+                className="rounded-md border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50"
+              >
+                Anterior
+              </button>
+              <button
+                type="button"
+                onClick={() => setActivationPage((current) => Math.min(activationTotalPages, current + 1))}
+                disabled={activationCurrentPage >= activationTotalPages}
+                className="rounded-md border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50"
+              >
+                Siguiente
+              </button>
+            </div>
           </div>
         </section>
       </section>
